@@ -21,9 +21,9 @@ describe('frSegments', () => {
 describe('meaningLines', () => {
   it('bricht an ; und an Nummerierung um', () => {
     expect(meaningLines("1. (Schlag) ausweichen 2. umgehen; s'esquiver = sich davonstehlen")).toEqual([
-      { text: '1. (Schlag) ausweichen', example: false },
-      { text: '2. umgehen', example: false },
-      { text: "s'esquiver = sich davonstehlen", example: true },
+      { text: '(Schlag) ausweichen', num: 1, example: false },
+      { text: 'umgehen', num: 2, example: false },
+      { text: "s'esquiver = sich davonstehlen", num: null, example: true },
     ]);
     expect(meaningLines('schleudern (Wäsche); auswringen').map((l) => l.text)).toEqual(['schleudern (Wäsche)', 'auswringen']);
   });

@@ -19,7 +19,10 @@ export function frSegments(fr: string, opts: { hideGender?: boolean } = {}): Seg
 }
 
 export interface MeaningLine {
+  /** Text ohne vorangestellte Nummer. */
   text: string;
+  /** Nummer aus „1. …“, falls vorhanden. */
+  num: number | null;
   /** Wendung oder Beispiel der Form „x = y“. */
   example: boolean;
 }
@@ -30,5 +33,9 @@ export function meaningLines(de: string): MeaningLine[] {
     .split(/;\s*|\s+(?=\d+\.\s)/u)
     .map((t) => t.trim())
     .filter((t) => t !== '')
-    .map((text) => ({ text, example: /\s=\s/u.test(text) }));
+    .map((raw) => {
+      const m = /^(\d+)\.\s*(.*)$/u.exec(raw);
+      const text = m ? m[2]! : raw;
+      return { text, num: m ? Number(m[1]) : null, example: /\s=\s/u.test(text) };
+    });
 }

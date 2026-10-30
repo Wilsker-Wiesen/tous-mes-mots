@@ -111,33 +111,54 @@ function home(app: App): void {
     onclick: () => quiz(app, new Session(entries, app.states, app.planner, newId())),
   });
 
+  const stat = (n: number, label: string, lead = false) =>
+    h('div', { class: `stat${lead ? ' lead' : ''}` }, h('b', {}, String(n)), h('span', { class: 'muted small' }, label));
+
   show(
     h(
       'div',
       { class: 'home' },
-      h('h1', {}, 'Tous mes mots'),
       h(
         'div',
-        { class: 'stats' },
-        h('div', { class: 'stat' }, h('b', {}, String(summary.due)), h('span', { class: 'muted small' }, 'fällig')),
-        h('div', { class: 'stat' }, h('b', {}, String(summary.newAvailable)), h('span', { class: 'muted small' }, 'neu')),
-        h('div', { class: 'stat' }, h('b', {}, String(app.states.size)), h('span', { class: 'muted small' }, 'gelernt')),
+        { class: 'brand' },
+        h('img', { src: './icon.svg', alt: '' }),
+        h('div', {}, h('h1', {}, 'Tous mes mots'), h('p', { class: 'muted small' }, 'Erkennen · Französisch → Deutsch')),
       ),
+      h('div', { class: 'panel stats' }, stat(summary.due, 'fällig', summary.due > 0), stat(summary.newAvailable, 'neu'), stat(app.states.size, 'gelernt')),
       start,
       h(
         'div',
-        { class: 'setting' },
-        h('span', {}, 'Neue Karten pro Tag', h('br'), h('span', { class: 'muted small' }, `heute schon ${summary.newToday}`)),
-        h('div', { class: 'stepper' }, step(-5), newOut, step(5)),
+        { class: 'panel settings' },
+        h(
+          'div',
+          { class: 'setting' },
+          h('span', {}, 'Neue Karten pro Tag', h('br'), h('span', { class: 'muted small' }, `heute schon ${summary.newToday}`)),
+          h('div', { class: 'stepper' }, step(-5), newOut, step(5)),
+        ),
       ),
       h(
         'p',
-        { class: 'muted small' },
-        `${app.file.items.length} Einträge · Import vom ${new Date(app.file.generatedAt).toLocaleDateString('de-DE')} · Erkennen FR → DE · v${__APP_VERSION__}`,
+        { class: 'muted small foot' },
+        `${app.file.items.length} Einträge · Import vom ${new Date(app.file.generatedAt).toLocaleDateString('de-DE')} · v${__APP_VERSION__}`,
       ),
     ),
   );
   start.focus();
+}
+
+const ICONS = {
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  undo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg>',
+};
+
+function iconButton(icon: keyof typeof ICONS, label: string, onclick: () => void, disabled = false): HTMLButtonElement {
+  const b = h('button', { class: 'icon', title: label, ariaLabel: label, onclick, disabled });
+  b.innerHTML = ICONS[icon];
+  return b;
+}
+
+function withContext(text: string): (Node | string)[] {
+  return frSegments(text).map((s) => (s.note ? h('span', { class: 'ctx' }, s.text) : s.text));
 }
 
 function front(entry: QueueEntry): HTMLElement {
@@ -150,11 +171,29 @@ function front(entry: QueueEntry): HTMLElement {
 function back(entry: QueueEntry): HTMLElement {
   const { item } = entry;
   const lines = meaningLines(item.de);
+  const meanings = lines.filter((l) => !l.example);
+  const examples = lines.filter((l) => l.example);
   return h(
     'div',
-    { class: 'back', lang: 'de' },
-    ...lines.map((l, i) => h('div', { class: `line${i === 0 ? ' first' : ''}${l.example ? ' example' : ''}` }, l.text)),
-    item.notiz && h('details', { open: item.expression }, h('summary', {}, 'Notiz'), item.notiz),
+    { class: 'back', lang: 'de', onclick: (ev: Event) => ev.stopPropagation() },
+    h('div', { class: 'label' }, 'Deutsch'),
+    h(
+      'ul',
+      { class: 'meanings' },
+      ...meanings.map((l, i) =>
+        h('li', { class: i === 0 ? 'main' : '' }, l.num !== null && h('span', { class: 'num' }, String(l.num)), h('span', {}, ...withContext(l.text))),
+      ),
+    ),
+    examples.length > 0 &&
+      h(
+        'div',
+        { class: 'examples' },
+        ...examples.map((l) => {
+          const [fr, ...de] = l.text.split(/\s=\s/u);
+          return h('div', { class: 'example' }, h('i', { lang: 'fr' }, fr ?? ''), ' = ', ...withContext(de.join(' = ')));
+        }),
+      ),
+    item.notiz && h('details', { class: 'notiz', open: item.expression }, h('summary', {}, 'Notiz'), h('p', {}, item.notiz)),
   );
 }
 
@@ -169,9 +208,8 @@ function quiz(app: App, session: Session): void {
       h(
         'div',
         { class: 'end' },
-        h('b', {}, String(session.done)),
-        h('p', {}, session.done === 1 ? 'Bewertung' : 'Bewertungen'),
-        h('button', { class: 'primary', textContent: 'Zurück', onclick: () => home(app) }),
+        h('div', { class: 'panel' }, h('b', {}, String(session.done)), h('p', { class: 'muted' }, session.done === 1 ? 'Karte bewertet' : 'Karten bewertet')),
+        h('button', { class: 'primary', textContent: 'Zur Übersicht', onclick: () => home(app) }),
       ),
     );
   };
@@ -215,7 +253,12 @@ function quiz(app: App, session: Session): void {
       revealedAt && e.item.sicherheit === 'eigen?' && h('span', { class: 'tag warn', title: 'Bedeutung in der Liste als unsicher markiert' }, 'Bedeutung unsicher'),
     ].filter(Boolean) as HTMLElement[];
 
-    const card = h('div', { class: 'card', onclick: reveal }, front(e), tags.length > 0 && h('div', { class: 'tags' }, ...tags), revealedAt && back(e));
+    const card = h(
+      'div',
+      { class: `panel card${revealedAt ? ' revealed' : ''}`, onclick: reveal },
+      h('div', { class: 'face' }, tags.length > 0 && h('div', { class: 'tags' }, ...tags), front(e)),
+      revealedAt && back(e),
+    );
 
     let actions: HTMLElement;
     if (!revealedAt) {
@@ -232,17 +275,27 @@ function quiz(app: App, session: Session): void {
       );
     }
 
+    const total = session.done + session.remaining;
+    const fill = h('div', { class: 'fill' });
+    fill.style.width = `${total ? (100 * session.done) / total : 0}%`;
+    const undoButton = iconButton('undo', 'Rückgängig (Z)', undo, !session.canUndo);
+    undoButton.classList.add('undo');
+    undoButton.append(h('span', {}, 'Rückgängig'));
     show(
       h(
         'div',
         { class: 'bar' },
-        h('button', { textContent: 'Beenden', onclick: finish }),
-        h('span', { class: 'progress muted' }, `${session.done} ✓ · ${session.remaining} offen`),
-        h('button', { textContent: 'Rückgängig', disabled: !session.canUndo, onclick: undo }),
+        iconButton('close', 'Sitzung beenden (Esc)', finish),
+        h(
+          'div',
+          { class: 'meter' },
+          h('div', { class: 'track' }, fill),
+          h('div', { class: 'count' }, h('span', {}, `${session.done} erledigt`), h('span', {}, `${session.remaining} offen`)),
+        ),
+        undoButton,
       ),
       card,
       actions,
-      h('div', { class: 'keys muted small' }, revealedAt ? '1 Nochmal · 2 Schwer · 3 Gut · 4 Leicht · Z rückgängig' : 'Leertaste aufdecken · Z rückgängig'),
     );
   };
 

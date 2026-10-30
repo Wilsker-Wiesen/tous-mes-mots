@@ -98,6 +98,23 @@ Grundlage: `Vokabeltrainer_Briefing_fuer_Claude_Code.md` (Stand 30.10.2026, gilt
   Offline-Cache. `base: './'`, damit dieselbe Ausgabe lokal und unter `/tous-mes-mots/` funktioniert.
   Symbol: eigenes SVG, PNGs mit `sips` erzeugt.
 
+## Gestaltung (31.10.2026, nach Jans Rückmeldung)
+
+- **Farben:** helle und dunkle Violetttöne statt Ocker; auch die Bewertungsknöpfe (Nochmal rosé, Schwer
+  lavendelgrau, Gut violett, Leicht blauviolett). Geprüft wird vorrangig im hellen Modus.
+- **Hauptknopf plastisch und hell** (Verlauf, violetter Rahmen, Schatten, Eindrück-Effekt) statt vollflächig
+  dunkelviolett, das Jan zu kräftig war.
+- **Karte als gerahmtes Feld:** Vorderseite oben, Rückseite in abgesetztem Bereich mit Überschrift „Deutsch“.
+  Hauptbedeutung fett und groß, nummerierte Bedeutungen mit Ziffernmarke, Klammerkontext klein und grau,
+  Wendungen „x = y“ in eigenen Kästen, Notiz als Fußzeile.
+- **Kopfzeile:** Schließen-Symbol, Fortschrittsbalken mit „erledigt/offen“, Rückgängig-Symbol (auf dem iPad mit
+  Beschriftung). Die Tastenlegende unter den Knöpfen ist entfallen; Tasten funktionieren weiter.
+- **iPad:** ab 700 px Breite größere Schrift und Abstände, Inhalt bis 820 px breit, hoch- und querformat geprüft.
+- **App-Symbol:** weißes T-Shirt mit Schatten und Falten, Aufdruck „mots“ in schräggestellter Arial (echte
+  Kursive wird von macOS-`sips` nicht gerendert, deshalb Schrägstellung im SVG). Die PNGs wurden im Browser aus
+  dem SVG gerastert, weil `sips` keine SVG-Filter (Unschärfe, Stoffstruktur) beherrscht. Fotorealistisch im
+  strengen Sinn ist das nicht, sondern eine plastische Illustration. [Sicher]
+
 ## Nachtrag: Rückfragen-Modus (vorgemerkt)
 
 Jan möchte den Rückfragenkatalog der Chat-Sitzung (offene Fragen zu Screenshots und Notizen, aus denen die CSV

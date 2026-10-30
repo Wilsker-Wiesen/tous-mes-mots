@@ -110,10 +110,9 @@ Grundlage: `Vokabeltrainer_Briefing_fuer_Claude_Code.md` (Stand 30.10.2026, gilt
 - **Kopfzeile:** Schließen-Symbol, Fortschrittsbalken mit „erledigt/offen“, Rückgängig-Symbol (auf dem iPad mit
   Beschriftung). Die Tastenlegende unter den Knöpfen ist entfallen; Tasten funktionieren weiter.
 - **iPad:** ab 700 px Breite größere Schrift und Abstände, Inhalt bis 820 px breit, hoch- und querformat geprüft.
-- **App-Symbol:** weißes T-Shirt mit Schatten und Falten, Aufdruck „mots“ in schräggestellter Arial (echte
-  Kursive wird von macOS-`sips` nicht gerendert, deshalb Schrägstellung im SVG). Die PNGs wurden im Browser aus
-  dem SVG gerastert, weil `sips` keine SVG-Filter (Unschärfe, Stoffstruktur) beherrscht. Fotorealistisch im
-  strengen Sinn ist das nicht, sondern eine plastische Illustration. [Sicher]
+- **App-Symbol „Lettern-Kacheln“** (Jans Wahl aus zehn Entwürfen): TOUS, MES, MOTS senkrecht in drei Spalten,
+  jeder Buchstabe auf einem Plättchen mit Kante, die MOTS-Spalte violett mit weißer Schrift. Bewusst ohne
+  SVG-Filter, damit `sips` die PNGs direkt erzeugen kann. Das T-Shirt-Symbol ist verworfen.
 
 ## Nachtrag: Rückfragen-Modus (vorgemerkt)
 

@@ -1,0 +1,97 @@
+// Lernzustand und Ereignisprotokoll. Der Kartenzustand ist ein Cache; maßgeblich ist das Protokoll,
+// aus dem er sich (z. B. für einen späteren Wechsel zu FSRS-7) neu berechnen lässt.
+
+import type { Direction } from './types.ts';
+
+export type CardStatus = 'learning' | 'review' | 'relearning';
+/** Bewertung wie in Anki/ts-fsrs: 1 Nochmal, 2 Schwer, 3 Gut, 4 Leicht. */
+export type Grade = 1 | 2 | 3 | 4;
+
+/** ts-fsrs-Karte in JSON-tauglicher Form (Datumsfelder als ISO-Text). */
+export type FsrsSnapshot = Record<string, unknown> & {
+  stability: number;
+  difficulty: number;
+  dueAt: string;
+  lastReviewAt: string | null;
+  scheduleStatus: string;
+  scheduledDays: number;
+  reps: number;
+  lapses: number;
+};
+
+/** Nur Karten mit mindestens einer Bewertung haben einen Zustand; alle anderen gelten als neu. */
+export interface CardState {
+  cardId: string;
+  itemId: string;
+  direction: Direction;
+  status: CardStatus;
+  fsrs: FsrsSnapshot;
+  introducedAt: string;
+}
+
+export interface MemorySnapshot {
+  status: CardStatus | 'new';
+  stability: number;
+  difficulty: number;
+  dueAt: string | null;
+}
+
+export interface ReviewEvent {
+  kind: 'review';
+  id: string;
+  /** Zeitpunkt der Bewertung (ISO). */
+  ts: string;
+  sessionId: string;
+  cardId: string;
+  itemId: string;
+  direction: Direction;
+  format: 'flip';
+  mode: 'review';
+  rating: Grade;
+  shownAt: string;
+  /** Zeit bis zum Aufdecken: Maß für die Abrufdauer. */
+  revealMs: number | null;
+  /** Zeit vom Zeigen bis zur Bewertung. */
+  answerMs: number;
+  before: MemorySnapshot;
+  after: MemorySnapshot & { scheduledDays: number };
+  /** Vorhergesagte Abrufwahrscheinlichkeit vor der Bewertung (null bei neuen Karten). */
+  rPred: number | null;
+  elapsedDays: number | null;
+  scheduler: string;
+  desiredRetention: number;
+  appVersion: string;
+}
+
+/** Macht eine Bewertung rückgängig, ohne das Protokoll zu verändern. */
+export interface UndoEvent {
+  kind: 'undo';
+  id: string;
+  ts: string;
+  targetId: string;
+}
+
+export type LogEvent = ReviewEvent | UndoEvent;
+
+export interface Settings {
+  newPerDay: number;
+  sessionSize: number;
+  desiredRetention: number;
+}
+
+export const DEFAULT_SETTINGS: Settings = { newPerDay: 20, sessionSize: 50, desiredRetention: 0.9 };
+
+/** Lerntag beginnt um 4 Uhr Ortszeit, damit späte Abendsitzungen zum selben Tag zählen. */
+export const DAY_ROLLOVER_HOUR = 4;
+
+export function dayStart(now: Date): Date {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), DAY_ROLLOVER_HOUR);
+  if (now < d) d.setDate(d.getDate() - 1);
+  return d;
+}
+
+export function newId(): string {
+  const c = globalThis.crypto;
+  if (c && 'randomUUID' in c) return c.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}

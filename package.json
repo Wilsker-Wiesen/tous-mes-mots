@@ -5,6 +5,9 @@
   "type": "module",
   "description": "Persönlicher Vokabeltrainer Französisch (FSRS, offline, ein Nutzer)",
   "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
     "import": "tsx scripts/import.ts",
     "import:check": "tsx scripts/import.ts --dry-run",
     "test": "vitest run",
@@ -13,8 +16,18 @@
   },
   "devDependencies": {
     "@types/node": "^18.19.130",
+    "fake-indexeddb": "^6.2.7",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
+    "vite": "^6.4.5",
+    "vite-plugin-pwa": "^0.21.2",
     "vitest": "^3.2.7"
+  },
+  "dependencies": {
+    "idb": "^8.0.4",
+    "ts-fsrs": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=20.19"
   }
 }

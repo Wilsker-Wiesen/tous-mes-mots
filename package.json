@@ -1,0 +1,20 @@
+{
+  "name": "tous-mes-mots",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Persönlicher Vokabeltrainer Französisch (FSRS, offline, ein Nutzer)",
+  "scripts": {
+    "import": "tsx scripts/import.ts",
+    "import:check": "tsx scripts/import.ts --dry-run",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.130",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "vitest": "^3.2.7"
+  }
+}

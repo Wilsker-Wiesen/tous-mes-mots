@@ -1,0 +1,19 @@
+node_modules
+dist
+coverage
+*.tsbuildinfo
+*.local
+.DS_Store
+
+# Wortschatz gehört NIE ins öffentliche Repository (Einträge aus Lehrwerken/Wörterbüchern,
+# Urheberrecht ungeklärt). Die CSV liegt außerhalb des Repos; die daraus erzeugte cards.json
+# enthält denselben Inhalt und bleibt deshalb ebenfalls lokal.
+*.csv
+!src/import/fixtures/*.csv
+public/data/
+private/
+
+# Rohnotizen der Recherche (können Zitate enthalten); das Konzept selbst ist eingecheckt.
+docs/recherche/*
+!docs/recherche/Vokabeltrainer Lernmechanik Konzept.md
+quellen/

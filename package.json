@@ -13,9 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "deploy": "npm run import && npm run rueckfragen && npm run build && wrangler deploy",
-    "worker:dev": "npm run build && wrangler dev",
-    "rueckfragen": "tsx scripts/rueckfragen.ts"
+    "rueckfragen": "tsx scripts/rueckfragen.ts",
+    "daten": "npm run import && npm run rueckfragen && tsx scripts/vault.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

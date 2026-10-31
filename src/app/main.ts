@@ -3,7 +3,8 @@
 import './style.css';
 import { h, show } from './dom.ts';
 import { dataPage, LAST_BACKUP_KEY, saveFile } from './data-view.ts';
-import { loadAnswers, loadQuestions, questionsPage, type QuestionsData } from './questions-view.ts';
+import { loadAppData } from './data-source.ts';
+import { loadAnswers, questionsPage, type QuestionsData } from './questions-view.ts';
 import { statsPage } from './stats-view.ts';
 import { frSegments, meaningLines } from '../core/display.ts';
 import { REPORT_REASONS, type Report, type ReportReason } from '../core/backup.ts';
@@ -59,12 +60,9 @@ function persist(task: () => Promise<void>): void {
 }
 
 async function boot(): Promise<void> {
-  let file: CardsFile;
-  try {
-    const res = await fetch('./data/cards.json', { cache: 'no-cache' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    file = (await res.json()) as CardsFile;
-  } catch {
+  const store = await openStore();
+  const data = await loadAppData(store);
+  if (!data) {
     show(
       h(
         'div',
@@ -73,20 +71,20 @@ async function boot(): Promise<void> {
         h(
           'div',
           { class: 'error' },
-          h('p', {}, 'Keine Wortliste gefunden. Im Projektordner einmal den Import ausführen:'),
-          h('code', {}, 'npm run import'),
+          h('p', {}, 'Keine Wortliste gefunden. Im Projektordner ausführen:'),
+          h('code', {}, 'npm run daten'),
         ),
       ),
     );
     return;
   }
-  const store = await openStore();
+  const { file, questions } = data;
   const all = await store.allStates();
   const stale = statesToDelete(all, file);
   if (stale.length > 0) await store.deleteStates(stale);
   const settings = await store.getSettings();
   const planner = await createPlanner(settings);
-  const [reports, lastBackup, questions] = await Promise.all([store.allReports(), store.getMeta<string>(LAST_BACKUP_KEY), loadQuestions()]);
+  const [reports, lastBackup] = await Promise.all([store.allReports(), store.getMeta<string>(LAST_BACKUP_KEY)]);
   const app: App = { file, store, planner, settings, states: activeStates(all, file), reported: new Set(reports.map((r) => r.itemId)), lastBackup, questions, openQuestions: 0 };
   await countOpenQuestions(app);
   home(app);

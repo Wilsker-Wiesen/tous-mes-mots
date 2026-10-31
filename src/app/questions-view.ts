@@ -24,6 +24,8 @@ export interface QuestionsData {
   catalog: Catalog;
   questions: Question[];
   previous: Record<string, Partial<Answer> & { id: string }>;
+  /** Bildadresse zu `bild` (Datei in der Entwicklung, data:-URL aus dem Tresor). */
+  image: (bild: string) => string;
 }
 
 /** Katalog laden; null, wenn auf diesem Gerät keiner vorhanden ist. */
@@ -35,7 +37,7 @@ export async function loadQuestions(): Promise<QuestionsData | null> {
     const prev = await fetch(`${BASE}antworten_bisher.json`, { cache: 'no-cache' })
       .then((r) => (r.ok ? r.json() : {}))
       .catch(() => ({}));
-    return { catalog, questions: questionsFrom(catalog), previous: prev as QuestionsData['previous'] };
+    return { catalog, questions: questionsFrom(catalog), previous: prev as QuestionsData['previous'], image: (bild) => BASE + bild };
   } catch {
     return null;
   }
@@ -71,7 +73,7 @@ function originalBlock(o: Original): HTMLElement {
 }
 
 function imageBlock(src: string): HTMLElement {
-  const img = h('img', { src: BASE + src, alt: 'Screenshot zur Frage', loading: 'lazy' });
+  const img = h('img', { src, alt: 'Screenshot zur Frage', loading: 'lazy' });
   const wrap = h('button', { type: 'button', class: 'shot', title: 'Vergrößern' }, img);
   wrap.onclick = () => wrap.classList.toggle('zoom');
   return wrap;
@@ -412,7 +414,7 @@ export async function questionsPage(input: QuestionsInput): Promise<void> {
         h('div', { class: 'qhead' }, h('span', { class: 'tag' }, groups[q.group] ?? q.group), done ? h('span', { class: 'tag done' }, 'beantwortet') : null, h('span', { class: 'muted small' }, `${index + 1} / ${items.length} · ${q.id}`)),
         ...questionBody(q),
         q.original ? originalBlock(q.original) : null,
-        q.bild ? imageBlock(q.bild) : null,
+        q.bild ? imageBlock(data.image(q.bild)) : null,
         answerArea(q, a),
         error ? h('p', { class: 'err', role: 'alert' }, error) : null,
       ),

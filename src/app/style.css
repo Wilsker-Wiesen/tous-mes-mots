@@ -392,6 +392,10 @@ button.icon svg { width: 20px; height: 20px; }
 .undo-answer { justify-self: center; align-self: center; }
 .icon.export { font-size: 20px; }
 
+/* Entsperren */
+.unlock input[type='password'] { font: inherit; font-size: 18px; padding: 14px; border-radius: 14px; border: 1px solid var(--primary-border); background: var(--surface); color: var(--text); }
+.unlock .primary { padding: 16px; font-size: 18px; }
+
 /* Ende */
 .end { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; text-align: center; }
 .end .panel { padding: 32px 24px; }

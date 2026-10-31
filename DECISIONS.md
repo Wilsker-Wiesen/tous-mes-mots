@@ -215,7 +215,29 @@ Grundlage: Recherche `docs/recherche/chesscom_statistik.md` (Vorbild chess.com).
 - **Speicherort:** Version 1 lokal plus Datei-Sicherung (Schritt 4). Für späteren Sync steht Jans kostenloses
   Cloudflare-Konto bereit (Worker mit Durable Objects/SQLite wie in `parteigesicht/server`). [Sicher]
 
-## Schritt 5: Deployment (31.10.2026)
+## Umzug zu GitHub Pages mit verschlüsselten Daten (31.10.2026)
+
+Jan will alles an einem Ort (GitHub) und die gewohnte `github.io`-Adresse. GitHub Pages kann nicht mit Passwort
+schützen (nur Enterprise Cloud) [Sicher]; deshalb liegen die Daten verschlüsselt im öffentlichen Repo.
+Laut Jan enthält die Liste nichts aus Découvertes; verschlüsselt wird trotzdem wegen privater Notizen im
+Rückfragenkatalog und der Wörterbuchauszüge.
+
+- **Tresor** `public/vault.json`: Wortliste (`cards.json`), Rückfragenkatalog, bisherige Antworten und Bilder als
+  ein JSON, gzip, AES-256-GCM; Schlüssel per PBKDF2-SHA-256 (600 000 Iterationen) aus Jans Passwort (`src/core/vault.ts`).
+- **`npm run daten`** (Jan selbst, im Terminal): CSV importieren, Rückfragen übernehmen, Passwort verdeckt abfragen,
+  verschlüsseln, committen, pushen. Das Passwort sieht Claude nie. Der Salt bleibt beim Aktualisieren gleich, damit
+  die Geräte ihren gespeicherten Schlüssel weiter nutzen; `--neues-passwort` erzeugt einen neuen (alle Geräte
+  melden sich einmal neu an). Bei bestehendem Tresor prüft das Skript das Passwort, damit ein Tippfehler nicht
+  versehentlich ein neues setzt.
+- **App:** beim ersten Start „Entsperren“ (einmal pro Gerät, auch in der Home-Bildschirm-App); gespeichert wird nur
+  der abgeleitete Schlüssel in IndexedDB, nie das Passwort. Danach startet sie ohne Abfrage, auch offline
+  (`vault.json` liegt im Service-Worker-Cache). In der Entwicklung ohne Tresor liest sie `public/data/` im Klartext.
+- **GitHub Actions** (`pages.yml`) testet, baut und veröffentlicht bei jedem Push; ein Schritt prüft, dass kein
+  Klartext (`dist/data`) im Build landet. Adresse: `https://wilsker-wiesen.github.io/tous-mes-mots/`.
+- **Grenze:** Wer das Passwort kennt, kann auch ältere Tresorstände aus der Repo-Historie entschlüsseln. [Sicher]
+- Der Cloudflare-Worker aus Schritt 5 bleibt, bis die GitHub-Fassung auf Jans iPhone läuft; danach stilllegen.
+
+## Schritt 5: Deployment über Cloudflare (31.10.2026, abgelöst durch GitHub Pages)
 
 Jan entschied: Cloudflare mit Passwort (statt öffentlicher GitHub Pages ohne Wortliste).
 

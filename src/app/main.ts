@@ -2,8 +2,10 @@
 
 import './style.css';
 import { h, show } from './dom.ts';
+import { dataPage, LAST_BACKUP_KEY } from './data-view.ts';
 import { statsPage } from './stats-view.ts';
 import { frSegments, meaningLines } from '../core/display.ts';
+import { REPORT_REASONS, type Report, type ReportReason } from '../core/backup.ts';
 import { filterItems } from '../core/filter.ts';
 import { matchesAnswer } from '../core/normalize.ts';
 import { buildRound, gameEvent, gamePool, pullForward, SPRINT_SECONDS, SUDDEN_SECONDS_PER_WORD, type GameMode, type Round } from '../core/game.ts';
@@ -38,6 +40,9 @@ interface App {
   planner: Planner;
   settings: Settings;
   states: Map<string, CardState>;
+  /** Einträge mit offener Meldung. */
+  reported: Set<string>;
+  lastBackup: string | undefined;
 }
 
 /** Schreibvorgänge nacheinander ausführen, ohne die Oberfläche warten zu lassen. */
@@ -77,7 +82,8 @@ async function boot(): Promise<void> {
   if (stale.length > 0) await store.deleteStates(stale);
   const settings = await store.getSettings();
   const planner = await createPlanner(settings);
-  home({ file, store, planner, settings, states: activeStates(all, file) });
+  const [reports, lastBackup] = await Promise.all([store.allReports(), store.getMeta<string>(LAST_BACKUP_KEY)]);
+  home({ file, store, planner, settings, states: activeStates(all, file), reported: new Set(reports.map((r) => r.itemId)), lastBackup });
 }
 
 function queueFor(app: App, now = new Date()) {
@@ -174,6 +180,7 @@ function home(app: App): void {
         ),
       ),
       filters(app),
+      backupHint(app),
       h(
         'p',
         { class: 'muted small foot' },
@@ -182,6 +189,42 @@ function home(app: App): void {
     ),
   );
   start.focus();
+}
+
+const BACKUP_REMIND_DAYS = 7;
+
+/** Fußzeile mit Zugang zur Datenseite; mahnt, wenn die letzte Sicherung zu lange her ist. */
+function backupHint(app: App): HTMLElement {
+  const days = app.lastBackup ? (Date.now() - Date.parse(app.lastBackup)) / 86_400_000 : Infinity;
+  const due = app.states.size > 0 && days > BACKUP_REMIND_DAYS;
+  const text = !app.lastBackup ? 'noch keine Sicherung' : `letzte Sicherung vor ${Math.floor(days)} ${Math.floor(days) === 1 ? 'Tag' : 'Tagen'}`;
+  return h(
+    'button',
+    { class: `game-button data-button${due ? ' due' : ''}`, onclick: () => openData(app) },
+    h('b', {}, 'Daten & Sicherung'),
+    h('span', { class: 'muted small' }, due ? `${text} – jetzt sichern` : text),
+  );
+}
+
+function openData(app: App): void {
+  void dataPage({
+    file: app.file,
+    store: app.store,
+    settings: app.settings,
+    states: app.states,
+    appVersion: __APP_VERSION__,
+    back: () => void reloadApp(app),
+    reload: () => void boot(),
+    closeButton: (onclick) => iconButton('close', 'Zurück zur Übersicht', onclick),
+  });
+}
+
+/** Nach Besuch der Datenseite Meldungen und Sicherungsdatum neu lesen. */
+async function reloadApp(app: App): Promise<void> {
+  const [reports, lastBackup] = await Promise.all([app.store.allReports(), app.store.getMeta<string>(LAST_BACKUP_KEY)]);
+  app.reported = new Set(reports.map((r) => r.itemId));
+  app.lastBackup = lastBackup;
+  home(app);
 }
 
 async function openStats(app: App): Promise<void> {
@@ -297,7 +340,7 @@ function front(entry: QueueEntry): HTMLElement {
 }
 
 /** Rückseite: die Lösung, darunter Notiz. Beim Tippen zusätzlich die eigene Eingabe. */
-function back(entry: QueueEntry, typed: { answer: string; match: boolean } | null): HTMLElement {
+function back(entry: QueueEntry, typed: { answer: string; match: boolean } | null, footer: Node | null = null): HTMLElement {
   const { item } = entry;
   const deFr = entry.direction === 'de-fr';
   return h(
@@ -313,7 +356,12 @@ function back(entry: QueueEntry, typed: { answer: string; match: boolean } | nul
         h('span', { lang: 'fr' }, typed.answer || '—'),
         h('span', { class: 'verdict' }, typed.match ? 'passt' : 'weicht ab'),
       ),
-    item.notiz && h('details', { class: 'notiz', open: item.expression }, h('summary', {}, 'Notiz'), h('p', {}, item.notiz)),
+    h(
+      'div',
+      { class: 'back-foot' },
+      item.notiz ? h('details', { class: 'notiz', open: item.expression }, h('summary', {}, 'Notiz'), h('p', {}, item.notiz)) : h('span', {}),
+      footer,
+    ),
   );
 }
 
@@ -327,6 +375,8 @@ function quiz(app: App): void {
   let cardEl: HTMLElement | null = null;
   /** Tippmodus: Eingabe und Vergleichsergebnis der aktuellen Karte. */
   let typed: { answer: string; match: boolean } | null = null;
+  /** Meldeformular statt der Antwortknöpfe. */
+  let reporting = false;
   const typing = (e: QueueEntry | null) => app.settings.typing && e?.direction === 'de-fr';
 
   const finish = () => {
@@ -375,6 +425,7 @@ function quiz(app: App): void {
     entry = session.current;
     revealedAt = null;
     typed = null;
+    reporting = false;
     shownAt = new Date();
     render();
   };
@@ -397,6 +448,7 @@ function quiz(app: App): void {
     shownAt = new Date();
     revealedAt = null;
     typed = null;
+    reporting = false;
     render();
   };
 
@@ -443,13 +495,63 @@ function quiz(app: App): void {
       'div',
       { class: `card${revealedAt ? ' revealed' : ''}`, onclick: flip },
       h('div', { class: 'face' }, tags.length > 0 && h('div', { class: 'tags' }, ...tags), front(e)),
-      revealedAt && back(e, typed),
+      revealedAt &&
+        back(
+          e,
+          typed,
+          app.reported.has(e.item.id)
+            ? h('span', { class: 'tag' }, 'gemeldet')
+            : h('button', { class: 'link-button', textContent: 'Melden', title: 'Eintrag an die Listenpflege melden (M)', onclick: () => ((reporting = true), render()) }),
+        ),
     );
     swipe(cardEl);
 
     let actions: HTMLElement;
     let focusTarget: HTMLElement | null = null;
-    if (!revealedAt && typing(e)) {
+    if (revealedAt && reporting) {
+      let reason: ReportReason = e.item.sicherheit === 'eigen?' ? 'bedeutung' : 'sonstiges';
+      const chips = REPORT_REASONS.map((r) => {
+        const b = h('button', { type: 'button', className: `chip${r.value === reason ? ' on' : ''}`, textContent: r.label });
+        b.onclick = () => {
+          reason = r.value;
+          chips.forEach((c) => c.classList.toggle('on', c === b));
+        };
+        return b;
+      });
+      const note = h('textarea', { rows: 2, placeholder: 'Was stimmt nicht? (optional)' });
+      const submit = (ev: Event) => {
+        ev.preventDefault();
+        const report: Report = {
+          id: newId(),
+          ts: new Date().toISOString(),
+          itemId: e.item.id,
+          fr: e.item.fr,
+          de: e.item.de,
+          richtung: e.item.richtung,
+          line: e.item.line,
+          sicherheit: e.item.sicherheit,
+          reason,
+          note: note.value.trim(),
+        };
+        persist(() => app.store.addReport(report));
+        app.reported.add(e.item.id);
+        reporting = false;
+        render();
+      };
+      actions = h(
+        'form',
+        { class: 'actions report-form panel', onsubmit: submit },
+        h('div', { class: 'chips' }, ...chips),
+        note,
+        h(
+          'div',
+          { class: 'row' },
+          h('button', { class: 'primary', type: 'submit', textContent: 'Melden' }),
+          h('button', { type: 'button', textContent: 'Abbrechen', onclick: () => ((reporting = false), render()) }),
+        ),
+      );
+      focusTarget = note;
+    } else if (!revealedAt && typing(e)) {
       const input = h('input', {
         type: 'text',
         lang: 'fr',
@@ -510,6 +612,15 @@ function quiz(app: App): void {
 
   const onKey = (ev: KeyboardEvent) => {
     if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    if (reporting) {
+      if (ev.key === 'Escape') (reporting = false), render();
+      return;
+    }
+    if (ev.key === 'm' && revealedAt && entry && !app.reported.has(entry.item.id) && !(ev.target instanceof HTMLInputElement)) {
+      ev.preventDefault(); // sonst landet das „m“ im gleich fokussierten Notizfeld
+      reporting = true;
+      return render();
+    }
     // Im Tippfeld nur Esc abfangen; Enter erledigt das Feld selbst.
     if (ev.target instanceof HTMLInputElement) {
       if (ev.key === 'Escape') finish();

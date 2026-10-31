@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, type CardState, type LogEvent } from '../core/state.ts';
+import { openDB } from 'idb';
 import { openStore } from './db.ts';
 
 const state = (cardId: string, stability: number): CardState =>
@@ -32,5 +33,31 @@ describe('Store', () => {
     expect((await s.getSettings()).newPerDay).toBe(20);
     await s.setSettings({ ...DEFAULT_SETTINGS, newPerDay: 10 });
     expect((await s.getSettings()).newPerDay).toBe(10);
+  });
+
+  it('Upgrade von Version 1 behält Daten und ergänzt Meldungen', async () => {
+    const v1 = await openDB('t4', 1, {
+      upgrade(d) {
+        d.createObjectStore('cards', { keyPath: 'cardId' }).createIndex('byItem', 'itemId');
+        d.createObjectStore('events', { keyPath: 'id' }).createIndex('byTs', 'ts');
+        d.createObjectStore('meta');
+      },
+    });
+    await v1.put('cards', state('a/fr-de', 3));
+    v1.close();
+    const s = await openStore('t4');
+    expect((await s.allStates())[0]!.fsrs.stability).toBe(3);
+    await s.addReport({ id: 'r', ts: '', itemId: 'a', fr: 'a', de: 'b', richtung: 'FR→DE', line: 1, sicherheit: 'eigen', reason: 'sonstiges', note: '' });
+    expect(await s.allReports()).toHaveLength(1);
+    await s.deleteReports(['r']);
+    expect(await s.allReports()).toHaveLength(0);
+  });
+
+  it('Import in einer Transaktion: Karten, Ereignisse, Bestwerte', async () => {
+    const s = await openStore('t5');
+    await s.importMerged({ cards: [state('a/fr-de', 7)], events: [ev('e1', '2026-11-01T09:00:00Z')], reports: [], bests: { sprint: 12 } });
+    expect((await s.allStates())[0]!.fsrs.stability).toBe(7);
+    expect([...(await s.eventIds())]).toEqual(['e1']);
+    expect(await s.allBests()).toEqual({ sprint: 12 });
   });
 });

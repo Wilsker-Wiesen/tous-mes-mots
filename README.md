@@ -4,8 +4,9 @@ Eine schnelle, offline nutzbare Web-App, um den eigenen französischen Wortschat
 Umgangssprache, Argot, Wendungen) in beiden Richtungen abzufragen. Planung mit FSRS, Lernzustand nur lokal
 auf dem Gerät, keine Konten, kein Server.
 
-> Stand: Oktober 2026, Version 0.1. Umgesetzt: Import (Schritt 1) und Abfrage „Erkennen“ mit FSRS (Schritt 2).
-> Produktionsrichtung, Filter, Tippmodus, Export und Deployment folgen.
+> Stand: Oktober 2026, Version 0.1. Umgesetzt: Import, Karteikarten-Abfrage mit FSRS in beiden Richtungen,
+> Sortierphase, Tippmodus, Filter, Spiele (60 Sekunden, Sudden Death), Statistik, Sicherung und Melden.
+> Es fehlt das Deployment (Schritt 5).
 
 ## Daten
 
@@ -31,7 +32,7 @@ npm run build         # PWA nach dist/
 npm run preview       # gebaute PWA lokal ansehen
 ```
 
-Bedienung: Leertaste oder Antippen deckt auf, 1–4 bewertet (Nochmal, Schwer, Gut, Leicht), Z nimmt zurück.
+Bedienung: Karte antippen (oder Leertaste) dreht um; „Wusste ich“ / „Wusste ich nicht“ per Knopf, Wischen oder ← →; Z nimmt zurück, M meldet einen Eintrag.
 
 Standardpfad der CSV: `~/Documents/Vokabeln & Definitionen/Vokabeln/Französisch-Vokabeln/woerterbuch_neu.csv`,
 überschreibbar mit `--csv` oder der Umgebungsvariable `TMM_CSV`.

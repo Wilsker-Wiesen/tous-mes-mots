@@ -170,6 +170,28 @@ Jans ausdrücklichen Wunsch, aber ohne Abzeichen oder Serien, nur mit einem nüc
   protokolliert (Wort, Optionen, Wahl, Antwortzeit).
 - **Ende:** Ergebnis, Bestwert, Liste der nicht gewussten Wörter mit Bedeutung.
 
+## Schritt 4: Sicherung und Melden (31.10.2026)
+
+- **Seite „Daten & Sicherung“** (Startseite unten; rot umrandet, wenn es Lernstand gibt und die letzte Sicherung
+  älter als 7 Tage ist oder fehlt).
+- **Sicherung** = eine JSON-Datei mit Kartenständen, vollständigem Protokoll, Bestwerten, Einstellungen und
+  Meldungen (Format `tous-mes-mots-backup`, Version 1). Auf iPhone/iPad über das Teilen-Menü (Dateien, AirDrop,
+  iCloud Drive), am Mac als Download. Nach dem Sichern fordert die App dauerhaften Speicher an
+  (`navigator.storage.persist`), damit Safari die Daten nicht nach längerer Pause löscht. [Wahrscheinlich, ob
+  Safari zustimmt, hängt u. a. vom Home-Bildschirm ab]
+- **Einlesen führt zusammen statt zu überschreiben:** Ereignisse werden über ihre ID vereinigt (das Protokoll
+  bleibt nur-anhängend), je Karte gewinnt der Stand mit der jüngsten Antwort, Bestwerte als Maximum. Vor dem
+  Übernehmen zeigt die App, was sich ändert; zweimal dieselbe Datei ändert nichts. Damit lassen sich auch iPhone
+  und iPad abwechselnd abgleichen, ohne Server. Einstellungen werden nicht überschrieben.
+- **Prüfung beim Einlesen:** fremde, kaputte oder neuere Dateien werden mit klarer Meldung abgelehnt, nichts wird
+  halb übernommen (eine Transaktion).
+- **Melden:** auf der Rückseite jeder Karte („Melden“, Taste M): Grund (Bedeutung falsch, unvollständig,
+  Schreibung, Sonstiges; bei `eigen?` ist „Bedeutung falsch“ vorgewählt) und freie Notiz. Gemeldete Karten zeigen
+  „gemeldet“. Export als `meldungen-JJJJ-MM-TT.json` mit Französisch + Richtung (darüber findet die Chat-Sitzung
+  die Zeile), Deutsch, Grund, Notiz, Zeilennummer; danach „Liste leeren“. Die App ändert die CSV nie (Briefing 6).
+- **Protokoll als CSV** (Semikolon, UTF-8 mit BOM) für Numbers, Excel, R oder Python (Konzept 8.4).
+- **Datenbank Version 2** mit eigenem Speicher für Meldungen; Upgrade von Version 1 behält alle Daten (getestet).
+
 ## Statistik-Kapitel (31.10.2026)
 
 Grundlage: Recherche `docs/recherche/chesscom_statistik.md` (Vorbild chess.com). Eigener Bereich, erreichbar über

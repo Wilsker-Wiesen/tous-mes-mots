@@ -1,6 +1,8 @@
 // Oberfläche (Vanilla TS). Lernlogik und Daten liegen in src/core und src/storage.
 
 import './style.css';
+import { h, show } from './dom.ts';
+import { statsPage } from './stats-view.ts';
 import { frSegments, meaningLines } from '../core/display.ts';
 import { filterItems } from '../core/filter.ts';
 import { matchesAnswer } from '../core/normalize.ts';
@@ -29,26 +31,6 @@ let search = '';
 /** Wischweg, ab dem eine Wischgeste als Antwort zählt (px). */
 const SWIPE_PX = 90;
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-const root = document.getElementById('app')!;
-
-type Child = Node | string | null | false | undefined;
-function h<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  props: Partial<HTMLElementTagNameMap[K]> & { class?: string } = {},
-  ...children: Child[]
-): HTMLElementTagNameMap[K] {
-  const el = document.createElement(tag);
-  const { class: cls, ...rest } = props;
-  if (cls) el.className = cls;
-  Object.assign(el, rest);
-  for (const c of children) if (c) el.append(c);
-  return el;
-}
-
-function show(...nodes: Node[]): void {
-  root.replaceChildren(...nodes);
-}
 
 interface App {
   file: CardsFile;
@@ -170,6 +152,12 @@ function home(app: App): void {
         h('button', { class: 'game-button', onclick: () => game(app, 'sudden') }, h('b', {}, 'Sudden Death'), h('span', { class: 'muted small' }, 'ein Fehler, und es ist vorbei')),
       ),
       h(
+        'button',
+        { class: 'game-button stats-button', onclick: () => openStats(app) },
+        h('b', {}, 'Statistik'),
+        h('span', { class: 'muted small' }, 'Verlauf, Schwächen, Rekorde'),
+      ),
+      h(
         'div',
         { class: 'panel settings' },
         h(
@@ -194,6 +182,18 @@ function home(app: App): void {
     ),
   );
   start.focus();
+}
+
+async function openStats(app: App): Promise<void> {
+  await writes;
+  statsPage({
+    items: app.file.items,
+    states: app.states,
+    events: await app.store.allEvents(),
+    desiredRetention: app.settings.desiredRetention,
+    back: () => home(app),
+    closeButton: (onclick) => iconButton('close', 'Zurück zur Übersicht', onclick),
+  });
 }
 
 /** Überschrift im Stil des App-Symbols: ein Plättchen pro Buchstabe, Anfangsbuchstaben violett. */

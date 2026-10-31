@@ -170,12 +170,28 @@ Jans ausdrücklichen Wunsch, aber ohne Abzeichen oder Serien, nur mit einem nüc
   protokolliert (Wort, Optionen, Wahl, Antwortzeit).
 - **Ende:** Ergebnis, Bestwert, Liste der nicht gewussten Wörter mit Bedeutung.
 
-## Statistik und Speicherort (vorgemerkt)
+## Statistik-Kapitel (31.10.2026)
 
-Jan möchte Statistik als eigenes Kapitel der App, mit Langzeitentwicklung; Vorbild chess.com (Recherche läuft,
-Ergebnis in `docs/recherche/chesscom_statistik.md`). Grundlage ist das Ereignisprotokoll in IndexedDB.
-Speicherort: Version 1 lokal plus Datei-Export (Schritt 4). Für späteres Backup/Sync steht Jans kostenloses
-Cloudflare-Workers-Konto bereit (Worker mit Durable Objects/SQLite wie in `parteigesicht/server`). [Sicher]
+Grundlage: Recherche `docs/recherche/chesscom_statistik.md` (Vorbild chess.com). Eigener Bereich, erreichbar über
+„Statistik“ auf der Startseite.
+
+- **Keine eigene Statistik-Tabelle:** Alles wird beim Öffnen aus dem Ereignisprotokoll berechnet (`src/core/stats.ts`),
+  zurückgenommene Bewertungen zählen nicht. Bei einigen zehntausend Ereignissen schnell genug; ein inkrementeller
+  Schnappschuss wie bei chess.com kommt erst, wenn es spürbar langsam wird. [Wahrscheinlich]
+- **Zeitfenster** 7 T / 30 T / 90 T / 1 J / Alles, jeweils mit Vergleich zum gleich langen Zeitraum davor.
+- **Sechs Ansichten:** Bestand (gestapelter Balken: gewusst, gefestigt ≥ 21 T, jung, lernend, unsortiert);
+  Abrufquote im Verlauf (Linie je Tag/Woche/Monat, Ziellinie, Sortierphase getrennt); Aktivität (Kalender der
+  letzten 26 Wochen); Schwächen nach Kategorie (beobachtet minus FSRS-Erwartung, Wilson-Intervall im Tooltip,
+  graue Werte unter 30 Abfragen, dazu „beim ersten Sehen gewusst“ je Kategorie); Kalibrierung (erwartet gegen
+  gewusst, Zehntelklassen); Rekorde und Spielform (Bestwerte mit Datum, letzte 20 Läufe, Median der letzten 10).
+- **Kategorien** derzeit: Richtung, Wortart (grob aus den Klammerzusätzen), Sicherheit, Format (umgedreht/getippt).
+  Register, Sachfeld, Frequenz folgen, sobald die CSV diese Spalten hat.
+- **Weggelassen:** Ranglisten, Perzentile, strenge Serien. Aktive Tage am Stück dulden einen freien Tag.
+- **Diagramme** als eigenes SVG ohne Bibliothek, in tatsächlicher Breite gezeichnet (gleiche Schriftgröße auf
+  iPhone und iPad); eine Farbe (Violett-Stufen) für Mengen, Rosé/Violett nur für unter/über Erwartung;
+  Werte stehen immer auch als Zahl daneben, Tooltips per `<title>`.
+- **Speicherort:** Version 1 lokal plus Datei-Export (Schritt 4). Für späteres Backup/Sync steht Jans kostenloses
+  Cloudflare-Workers-Konto bereit (Worker mit Durable Objects/SQLite wie in `parteigesicht/server`). [Sicher]
 
 ## Nachtrag: Rückfragen-Modus (vorgemerkt)
 

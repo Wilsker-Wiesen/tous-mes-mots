@@ -18,6 +18,3 @@ docs/recherche/*
 !docs/recherche/chesscom_statistik.md
 quellen/
 
-# Cloudflare: lokale Wrangler-Daten und Geheimnisse
-.wrangler/
-.dev.vars

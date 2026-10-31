@@ -25,7 +25,6 @@
   "include": [
     "src",
     "scripts",
-    "worker",
     "vitest.config.ts",
     "vite.config.ts"
   ]

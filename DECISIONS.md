@@ -235,7 +235,11 @@ Rückfragenkatalog und der Wörterbuchauszüge.
 - **GitHub Actions** (`pages.yml`) testet, baut und veröffentlicht bei jedem Push; ein Schritt prüft, dass kein
   Klartext (`dist/data`) im Build landet. Adresse: `https://wilsker-wiesen.github.io/tous-mes-mots/`.
 - **Grenze:** Wer das Passwort kennt, kann auch ältere Tresorstände aus der Repo-Historie entschlüsseln. [Sicher]
-- Der Cloudflare-Worker aus Schritt 5 bleibt, bis die GitHub-Fassung auf Jans iPhone läuft; danach stilllegen.
+- Der Cloudflare-Worker aus Schritt 5 ist gelöscht (31.10.2026, nachdem die GitHub-Fassung auf Jans iPhone lief);
+  Worker-Code und Wrangler sind aus dem Repo entfernt (in der Git-Historie nachlesbar).
+- **Passwort nur einmal pro Gerät:** Jan will es nicht wiederholt eingeben. Neu gefragt wird nur nach neuem
+  Passwort oder gelöschten Websitedaten. Empfehlung: App vom Home-Bildschirm nutzen, weil Safari Daten von
+  Websites nach 7 Tagen ohne Besuch löscht, Home-Bildschirm-Apps aber nicht. [Wahrscheinlich]
 
 ## Schritt 5: Deployment über Cloudflare (31.10.2026, abgelöst durch GitHub Pages)
 

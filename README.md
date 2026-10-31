@@ -6,7 +6,7 @@ auf dem Gerät, keine Konten, kein Server.
 
 > Stand: Oktober 2026, Version 0.1. Umgesetzt: Import, Karteikarten-Abfrage mit FSRS in beiden Richtungen,
 > Sortierphase, Tippmodus, Filter, Spiele (60 Sekunden, Sudden Death), Statistik, Sicherung und Melden.
-> Es fehlt das Deployment (Schritt 5).
+> Dazu der Rückfragen-Modus für offene Fragen der Listenpflege. Online hinter Passwort auf Cloudflare.
 
 ## Daten
 
@@ -29,6 +29,8 @@ npm run import:check  # Diff-Protokoll gegen den letzten Import, ohne zu schreib
 npm run import        # CSV → public/data/cards.json
 npm run import -- --csv /pfad/zur/datei.csv
 npm run build         # PWA nach dist/
+npm run rueckfragen   # Rückfragenkatalog aus private/rueckfragen/ übernehmen
+npm run deploy        # importieren, bauen, zu Cloudflare hochladen (Passwort: npx wrangler secret put APP_PASSWORD)
 npm run preview       # gebaute PWA lokal ansehen
 ```
 
@@ -46,6 +48,7 @@ Standardpfad der CSV: `~/Documents/Vokabeln & Definitionen/Vokabeln/Französisch
 | `src/app/` | Oberfläche (Vanilla TypeScript) |
 | `src/import/` | CSV-Leser, ID-Vergabe, Diff (nur Node) |
 | `scripts/` | Kommandozeile für den Import |
+| `worker/` | Cloudflare Worker: Passwortschutz vor App und Wortliste |
 | `docs/recherche/` | Konzept zur Lernmechanik mit Quellen |
 
 ## Lizenz

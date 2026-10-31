@@ -212,16 +212,47 @@ Grundlage: Recherche `docs/recherche/chesscom_statistik.md` (Vorbild chess.com).
 - **Diagramme** als eigenes SVG ohne Bibliothek, in tatsächlicher Breite gezeichnet (gleiche Schriftgröße auf
   iPhone und iPad); eine Farbe (Violett-Stufen) für Mengen, Rosé/Violett nur für unter/über Erwartung;
   Werte stehen immer auch als Zahl daneben, Tooltips per `<title>`.
-- **Speicherort:** Version 1 lokal plus Datei-Export (Schritt 4). Für späteres Backup/Sync steht Jans kostenloses
-  Cloudflare-Workers-Konto bereit (Worker mit Durable Objects/SQLite wie in `parteigesicht/server`). [Sicher]
+- **Speicherort:** Version 1 lokal plus Datei-Sicherung (Schritt 4). Für späteren Sync steht Jans kostenloses
+  Cloudflare-Konto bereit (Worker mit Durable Objects/SQLite wie in `parteigesicht/server`). [Sicher]
 
-## Nachtrag: Rückfragen-Modus (vorgemerkt)
+## Schritt 5: Deployment (31.10.2026)
 
-Jan möchte den Rückfragenkatalog der Chat-Sitzung (offene Fragen zu Screenshots und Notizen, aus denen die CSV
-entstand) spielerisch in die App holen. Passt zum Briefing, weil der einzige Rückkanal eine Exportdatei an die
-Chat-Sitzung ist. Umsetzung nach Eingang des Katalogs in `private/rueckfragen/` (lokal, nicht im Repo):
-eigener Bereich, eine Frage pro Karte, große Antwortknöpfe, „noch n offen“, Export als JSON. Ohne Punkte
-oder Serien (Briefing: keine Gamification).
+Jan entschied: Cloudflare mit Passwort (statt öffentlicher GitHub Pages ohne Wortliste).
+
+- **Cloudflare Worker mit statischen Dateien** (`wrangler.toml`, `worker/index.ts`), kostenloser Workers-Plan auf
+  Jans Konto: `https://tous-mes-mots.wilsker-wiesen.workers.dev`. `run_worker_first`: jede Anfrage läuft zuerst
+  durch die Passwortprüfung, auch `data/cards.json` und der Rückfragenkatalog.
+- **Passwort** als Cloudflare-Secret `APP_PASSWORD`, gesetzt von Jan selbst (`npx wrangler secret put APP_PASSWORD`);
+  ohne Secret antwortet der Worker mit 503 (geschlossen statt offen). Sitzungs-Cookie = HMAC aus dem Passwort,
+  `HttpOnly; Secure; SameSite=Lax`, 400 Tage; ein neues Passwort meldet alle Geräte ab. Vergleich in konstanter
+  Zeit, 0,8 s Verzögerung nach falschem Passwort, kein offener Redirect, `noindex`, `robots.txt` sperrt alles.
+- **Ohne Anmeldung erreichbar** nur Anmeldeseite, Manifest und Symbole (für „Zum Home-Bildschirm“).
+- **iPhone:** Die Home-Bildschirm-App hat unter iOS einen eigenen Cookie-Speicher; dort einmal anmelden. Danach
+  startet die App auch offline aus dem Service-Worker-Cache. `/login` ist vom Navigations-Fallback ausgenommen.
+- **Veröffentlichen lokal** mit `npm run deploy` (CSV importieren, Rückfragen kopieren, bauen, hochladen), weil
+  Wortliste und Katalog nur auf Jans Mac liegen. Die CI baut und testet weiterhin, veröffentlicht aber nicht.
+- Wrangler 4 im Projekt; die Anmeldung bei Cloudflare (OAuth) besteht bereits von parteigesicht.
+
+## Rückfragen-Modus (31.10.2026)
+
+Grundlage: `private/rueckfragen/README.md` und `katalog.json` der Chat-Sitzung (bleiben lokal, nie im Repo).
+
+- **Daten:** `npm run rueckfragen` kopiert Katalog, `antworten_bisher.json` und Bilder nach
+  `public/data/rueckfragen/` (gitignoriert, online hinter dem Passwort). Ohne Katalog erscheint der Bereich nicht.
+- **Eine Frage pro Karte**, Gruppen `singles`, `g1`–`g7` (159 Fragen); `auto` und `skipped` nur Information.
+  Originaltext (Treffer hervorgehoben, mit Umgebung und Zeilennummer) und Bild stehen immer auf der Karte;
+  Bild antippen vergrößert.
+- **Vorbelegt** beim ersten Öffnen mit den 16 Antworten aus `antworten_bisher.json`; danach gelten nur noch die
+  in der App gespeicherten (sonst käme eine bewusst zurückgenommene Antwort wieder).
+- **Startwerte** laut README: Einzelfragen mit dem Vorschlag aus `cur`, sonst nichts gewählt. Prüfung vor dem
+  Speichern (z. B. „Falsch“ verlangt die richtige Fassung, bei Mehrfachbedeutungen muss eine bleiben).
+- **Bedienung:** Ansicht „Offen“ (Übersprungenes ans Ende) oder „Alle“, Filter nach Gruppe, Fortschrittsbalken,
+  „Speichern & weiter“, „Überspringen“, „Antwort zurücknehmen“; Tasten Enter, ←/→, 1–9. Ohne Punkte (Briefing).
+- **Begag-Annotationen:** „Nicht aufnehmen“ entfernt die Antwort (README: nichts gewählt = nicht aufnehmen).
+- **Export** exakt im README-Format: ein Objekt pro beantworteter Frage, Schlüssel = id, Felder
+  `id, picks, removed, verdict, text, del, ts`; Datei `rueckfragen_antworten_JJJJ-MM-TT.json`.
+- Antworten liegen in IndexedDB und reisen in der Sicherung mit (`questionAnswers`; beim Einlesen gewinnt die
+  jüngere Antwort je Frage).
 
 ## Widersprüche Briefing ↔ Konzept (Briefing gilt)
 

@@ -22,7 +22,7 @@ const backup = (cards: CardState[], events: LogEvent[], extra = {}) =>
 describe('parseBackup', () => {
   it('liest eine eigene Sicherung wieder ein', () => {
     const b = backup([card('a', '2026-11-01T00:00:00Z')], [undo('e1', '2026-11-01T00:00:00Z')]);
-    expect(parseBackup(JSON.stringify(b))).toEqual(b);
+    expect(parseBackup(JSON.stringify(b))).toEqual({ ...b, questionAnswers: [] });
   });
 
   it('lehnt fremde, kaputte oder zu neue Dateien mit klarer Meldung ab', () => {
@@ -53,6 +53,16 @@ describe('planMerge', () => {
     expect(plan.events.map((e) => e.id)).toEqual(['e2']);
     expect(plan.bests).toEqual({ sudden: 4 });
     expect(plan.reports).toEqual([report]);
+  });
+
+  it('Rückfragen-Antworten: nur neuere aus der Datei', () => {
+    const mine = { id: 'r001', picks: ['a'], removed: [], verdict: '' as const, text: '', del: false, ts: 5 };
+    const incoming = backup([], [], { questionAnswers: [{ ...mine, ts: 9, picks: ['b'] }, { ...mine, id: 'r002', ts: 1 }] });
+    const plan = planMerge({ ...local, questionAnswers: new Map([['r001', mine]]) }, incoming);
+    expect(plan.questionAnswers.map((a) => [a.id, a.picks])).toEqual([
+      ['r001', ['b']],
+      ['r002', ['a']],
+    ]);
   });
 
   it('zweimal dieselbe Sicherung einlesen ändert nichts', () => {

@@ -1,5 +1,6 @@
 // Sicherung des Lernstands als Datei (Version 1 hat keinen Sync) und Meldungen an die CSV-Pflege.
 
+import type { Answer } from './questions.ts';
 import type { CardState, GameMode, LogEvent, Settings } from './state.ts';
 import type { Item } from './types.ts';
 
@@ -40,6 +41,8 @@ export interface Backup {
   cards: CardState[];
   events: LogEvent[];
   reports: Report[];
+  /** Antworten im Rückfragen-Modus (fehlt in älteren Sicherungen). */
+  questionAnswers?: Answer[];
 }
 
 export function buildBackup(input: Omit<Backup, 'format' | 'version' | 'exportedAt'>, now = new Date()): Backup {
@@ -60,7 +63,7 @@ export function parseBackup(text: string): Backup {
   if (!Array.isArray(b.cards) || !Array.isArray(b.events)) throw new Error('Die Sicherung ist unvollständig.');
   for (const c of b.cards) if (!c || typeof c.cardId !== 'string' || typeof c.itemId !== 'string') throw new Error('Die Sicherung enthält fehlerhafte Karten.');
   for (const e of b.events) if (!e || typeof e.id !== 'string' || typeof e.ts !== 'string') throw new Error('Die Sicherung enthält fehlerhafte Ereignisse.');
-  return { reports: [], bests: {}, ...b } as Backup;
+  return { reports: [], bests: {}, questionAnswers: [], ...b } as Backup;
 }
 
 /** Zeitpunkt der letzten Antwort auf einer Karte; entscheidet beim Zusammenführen. */
@@ -75,6 +78,8 @@ export interface MergePlan {
   events: LogEvent[];
   reports: Report[];
   bests: Partial<Record<GameMode, number>>;
+  /** Rückfragen-Antworten, die in der Datei neuer sind. */
+  questionAnswers: Answer[];
   /** Karten, bei denen der Stand hier neuer ist und bleibt. */
   keptLocal: number;
 }
@@ -85,7 +90,7 @@ export interface MergePlan {
  * So kann man auch Sicherungen von zwei Geräten nacheinander einlesen.
  */
 export function planMerge(
-  local: { cards: CardState[]; eventIds: Set<string>; reportIds: Set<string>; bests: Partial<Record<GameMode, number>> },
+  local: { cards: CardState[]; eventIds: Set<string>; reportIds: Set<string>; bests: Partial<Record<GameMode, number>>; questionAnswers?: Map<string, Answer> },
   incoming: Backup,
 ): MergePlan {
   const localCards = new Map(local.cards.map((c) => [c.cardId, c]));
@@ -105,6 +110,7 @@ export function planMerge(
     events: incoming.events.filter((e) => !local.eventIds.has(e.id)),
     reports: (incoming.reports ?? []).filter((r) => !local.reportIds.has(r.id)),
     bests,
+    questionAnswers: (incoming.questionAnswers ?? []).filter((a) => a.ts > (local.questionAnswers?.get(a.id)?.ts ?? -1)),
     keptLocal,
   };
 }

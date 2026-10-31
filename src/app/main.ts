@@ -2,7 +2,8 @@
 
 import './style.css';
 import { h, show } from './dom.ts';
-import { dataPage, LAST_BACKUP_KEY } from './data-view.ts';
+import { dataPage, LAST_BACKUP_KEY, saveFile } from './data-view.ts';
+import { loadAnswers, loadQuestions, questionsPage, type QuestionsData } from './questions-view.ts';
 import { statsPage } from './stats-view.ts';
 import { frSegments, meaningLines } from '../core/display.ts';
 import { REPORT_REASONS, type Report, type ReportReason } from '../core/backup.ts';
@@ -43,6 +44,9 @@ interface App {
   /** Einträge mit offener Meldung. */
   reported: Set<string>;
   lastBackup: string | undefined;
+  /** Rückfragenkatalog, falls auf diesem Gerät vorhanden. */
+  questions: QuestionsData | null;
+  openQuestions: number;
 }
 
 /** Schreibvorgänge nacheinander ausführen, ohne die Oberfläche warten zu lassen. */
@@ -82,8 +86,10 @@ async function boot(): Promise<void> {
   if (stale.length > 0) await store.deleteStates(stale);
   const settings = await store.getSettings();
   const planner = await createPlanner(settings);
-  const [reports, lastBackup] = await Promise.all([store.allReports(), store.getMeta<string>(LAST_BACKUP_KEY)]);
-  home({ file, store, planner, settings, states: activeStates(all, file), reported: new Set(reports.map((r) => r.itemId)), lastBackup });
+  const [reports, lastBackup, questions] = await Promise.all([store.allReports(), store.getMeta<string>(LAST_BACKUP_KEY), loadQuestions()]);
+  const app: App = { file, store, planner, settings, states: activeStates(all, file), reported: new Set(reports.map((r) => r.itemId)), lastBackup, questions, openQuestions: 0 };
+  await countOpenQuestions(app);
+  home(app);
 }
 
 function queueFor(app: App, now = new Date()) {
@@ -179,6 +185,7 @@ function home(app: App): void {
           h('div', { class: 'stepper' }, step(-5), newOut, step(5)),
         ),
       ),
+      app.questions && questionsButton(app),
       filters(app),
       backupHint(app),
       h(
@@ -189,6 +196,31 @@ function home(app: App): void {
     ),
   );
   start.focus();
+}
+
+async function countOpenQuestions(app: App): Promise<void> {
+  if (!app.questions) return;
+  const answers = await loadAnswers(app.store, app.questions);
+  app.openQuestions = app.questions.questions.filter((q) => !answers.has(q.id)).length;
+}
+
+function questionsButton(app: App): HTMLElement {
+  return h(
+    'button',
+    {
+      class: 'game-button questions-button',
+      onclick: () =>
+        void questionsPage({
+          store: app.store,
+          data: app.questions!,
+          back: () => void countOpenQuestions(app).then(() => home(app)),
+          closeButton: (onclick) => iconButton('close', 'Zurück zur Übersicht', onclick),
+          saveFile,
+        }),
+    },
+    h('b', {}, 'Rückfragen zur Liste'),
+    h('span', { class: 'muted small' }, app.openQuestions > 0 ? `noch ${app.openQuestions} offen` : 'alle beantwortet'),
+  );
 }
 
 const BACKUP_REMIND_DAYS = 7;

@@ -10,10 +10,12 @@ import {
   type MergePlan,
   type Report,
 } from '../core/backup.ts';
+import { mergeAnswers, type Answer } from '../core/questions.ts';
 import type { CardState, Settings } from '../core/state.ts';
 import type { CardsFile } from '../core/types.ts';
 import type { Store } from '../storage/db.ts';
 import { h, show } from './dom.ts';
+import { ANSWERS_KEY } from './questions-view.ts';
 
 export const LAST_BACKUP_KEY = 'lastBackupAt';
 
@@ -36,7 +38,7 @@ const count = (n: number, one: string, many: string) => `${n.toLocaleString('de-
  * Datei speichern: auf iPhone/iPad über das Teilen-Menü (Dateien, AirDrop, iCloud Drive),
  * sonst als normaler Download.
  */
-async function saveFile(name: string, type: string, content: string): Promise<boolean> {
+export async function saveFile(name: string, type: string, content: string): Promise<boolean> {
   const file = new File([content], name, { type });
   if (navigator.maxTouchPoints > 0 && navigator.canShare?.({ files: [file] })) {
     try {
@@ -78,8 +80,14 @@ export async function dataPage(input: DataInput): Promise<void> {
 
   // ------------------------------------------------ Sicherung
   const exportBackup = async () => {
-    const [cards, events, bests, allReports] = await Promise.all([store.allStates(), store.allEvents(), store.allBests(), store.allReports()]);
-    const backup = buildBackup({ appVersion: input.appVersion, settings: input.settings, bests, cards, events, reports: allReports });
+    const [cards, events, bests, allReports, questionAnswers] = await Promise.all([
+      store.allStates(),
+      store.allEvents(),
+      store.allBests(),
+      store.allReports(),
+      store.getMeta<Answer[]>(ANSWERS_KEY),
+    ]);
+    const backup = buildBackup({ appVersion: input.appVersion, settings: input.settings, bests, cards, events, reports: allReports, questionAnswers: questionAnswers ?? [] });
     if (await saveFile(`tous-mes-mots-sicherung-${today()}.json`, 'application/json', JSON.stringify(backup))) {
       await store.setMeta(LAST_BACKUP_KEY, backup.exportedAt);
       await navigator.storage?.persist?.();
@@ -96,8 +104,15 @@ export async function dataPage(input: DataInput): Promise<void> {
     let plan: MergePlan;
     try {
       const backup = parseBackup(await f.text());
-      const [cards, eventIds, localReports, bests] = await Promise.all([store.allStates(), store.eventIds(), store.allReports(), store.allBests()]);
-      plan = planMerge({ cards, eventIds, reportIds: new Set(localReports.map((r) => r.id)), bests }, backup);
+      const [cards, eventIds, localReports, bests, localAnswers] = await Promise.all([
+        store.allStates(),
+        store.eventIds(),
+        store.allReports(),
+        store.allBests(),
+        store.getMeta<Answer[]>(ANSWERS_KEY),
+      ]);
+      const answerMap = new Map((localAnswers ?? []).map((a) => [a.id, a]));
+      plan = planMerge({ cards, eventIds, reportIds: new Set(localReports.map((r) => r.id)), bests, questionAnswers: answerMap }, backup);
       preview.replaceChildren(
         h('p', {}, h('b', {}, f.name), ` vom ${fmt(backup.exportedAt)}`),
         h(
@@ -106,9 +121,10 @@ export async function dataPage(input: DataInput): Promise<void> {
           h('li', {}, `${count(plan.cards.length, 'Karte', 'Karten')} mit neuerem Stand übernehmen`),
           h('li', {}, `${count(plan.events.length, 'fehlenden Eintrag', 'fehlende Einträge')} im Protokoll ergänzen`),
           plan.reports.length > 0 && h('li', {}, `${count(plan.reports.length, 'Meldung', 'Meldungen')} ergänzen`),
+          plan.questionAnswers.length > 0 && h('li', {}, `${count(plan.questionAnswers.length, 'Rückfragen-Antwort', 'Rückfragen-Antworten')} übernehmen`),
           plan.keptLocal > 0 && h('li', { class: 'muted' }, `${count(plan.keptLocal, 'Karte ist', 'Karten sind')} hier neuer und bleibt, wie sie ist`),
         ),
-        plan.cards.length + plan.events.length + plan.reports.length + Object.keys(plan.bests).length === 0
+        plan.cards.length + plan.events.length + plan.reports.length + plan.questionAnswers.length + Object.keys(plan.bests).length === 0
           ? h('p', { class: 'muted small' }, 'Nichts Neues: Diese Sicherung ist schon vollständig enthalten.')
           : h(
               'div',
@@ -118,6 +134,10 @@ export async function dataPage(input: DataInput): Promise<void> {
                 textContent: 'Übernehmen',
                 onclick: async () => {
                   await store.importMerged(plan);
+                  if (plan.questionAnswers.length > 0) {
+                    const mine = new Map(((await store.getMeta<Answer[]>(ANSWERS_KEY)) ?? []).map((a) => [a.id, a]));
+                    await store.setMeta(ANSWERS_KEY, [...mergeAnswers(mine, plan.questionAnswers).values()]);
+                  }
                   say('Sicherung eingelesen.');
                   input.reload();
                 },

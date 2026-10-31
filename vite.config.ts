@@ -30,6 +30,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,json}'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+        // Die Anmeldeseite des Workers nie durch die zwischengespeicherte App ersetzen.
+        navigateFallbackDenylist: [/^\/login/],
       },
     }),
   ],

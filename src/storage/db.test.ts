@@ -30,7 +30,7 @@ describe('Store', () => {
   it('Einstellungen mit Standardwerten', async () => {
     const s = await openStore('t3');
     expect((await s.getSettings()).newPerDay).toBe(20);
-    await s.setSettings({ newPerDay: 10, sessionSize: 30, desiredRetention: 0.9 });
+    await s.setSettings({ newPerDay: 10, sessionSize: 30, auditsPerDay: 5, desiredRetention: 0.9 });
     expect((await s.getSettings()).newPerDay).toBe(10);
   });
 });

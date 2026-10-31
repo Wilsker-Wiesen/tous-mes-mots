@@ -3,9 +3,12 @@
 
 import type { Direction } from './types.ts';
 
-export type CardStatus = 'learning' | 'review' | 'relearning';
-/** Bewertung wie in Anki/ts-fsrs: 1 Nochmal, 2 Schwer, 3 Gut, 4 Leicht. */
-export type Grade = 1 | 2 | 3 | 4;
+/** retired = beim ersten Sehen gewusst, kommt nur noch als seltene Stichprobe. */
+export type CardStatus = 'learning' | 'review' | 'relearning' | 'retired';
+/** FSRS-Note im Protokoll: 1 = nicht gewusst (Again), 3 = gewusst (Good). */
+export type Grade = 1 | 3;
+/** triage = erstes Sehen, audit = Stichprobe eines aussortierten Worts, review = normales Lernen. */
+export type AnswerMode = 'triage' | 'audit' | 'review';
 
 /** ts-fsrs-Karte in JSON-tauglicher Form (Datumsfelder als ISO-Text). */
 export type FsrsSnapshot = Record<string, unknown> & {
@@ -27,6 +30,8 @@ export interface CardState {
   status: CardStatus;
   fsrs: FsrsSnapshot;
   introducedAt: string;
+  /** Nur bei status = retired: nächste Stichprobe. */
+  audit?: { dueAt: string; intervalDays: number; lastAt: string };
 }
 
 export interface MemorySnapshot {
@@ -46,7 +51,7 @@ export interface ReviewEvent {
   itemId: string;
   direction: Direction;
   format: 'flip';
-  mode: 'review';
+  mode: AnswerMode;
   rating: Grade;
   shownAt: string;
   /** Zeit bis zum Aufdecken: Maß für die Abrufdauer. */
@@ -74,12 +79,16 @@ export interface UndoEvent {
 export type LogEvent = ReviewEvent | UndoEvent;
 
 export interface Settings {
+  /** Höchstzahl neuer Wörter pro Tag, die man NICHT wusste (gewusste kosten nichts). */
   newPerDay: number;
+  /** Karten pro Sitzung (ohne Wiederholungen innerhalb der Sitzung). */
   sessionSize: number;
+  /** Stichproben aussortierter Wörter pro Tag. */
+  auditsPerDay: number;
   desiredRetention: number;
 }
 
-export const DEFAULT_SETTINGS: Settings = { newPerDay: 20, sessionSize: 50, desiredRetention: 0.9 };
+export const DEFAULT_SETTINGS: Settings = { newPerDay: 20, sessionSize: 50, auditsPerDay: 5, desiredRetention: 0.9 };
 
 /** Lerntag beginnt um 4 Uhr Ortszeit, damit späte Abendsitzungen zum selben Tag zählen. */
 export const DAY_ROLLOVER_HOUR = 4;

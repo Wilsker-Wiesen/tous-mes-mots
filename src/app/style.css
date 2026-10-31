@@ -201,19 +201,21 @@ button.icon svg { width: 20px; height: 20px; }
 .notiz p { margin: 6px 0 0; }
 
 /* Bedienung */
-.actions { display: grid; gap: 10px; }
-.actions.reveal button { padding: 20px; font-size: 19px; }
-.grades { grid-template-columns: repeat(4, 1fr); }
-.grades button { --c: var(--accent); padding: 12px 4px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-weight: 600; color: var(--c); background: color-mix(in srgb, var(--c) 9%, var(--surface)); border-color: color-mix(in srgb, var(--c) 35%, transparent); }
-.grades button small { color: var(--muted); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
-.grades .g1 { --c: var(--again); }
-.grades .g2 { --c: var(--hard); }
-.grades .g3 { --c: var(--good); }
-.grades .g4 { --c: var(--easy); }
+.actions { display: grid; gap: 10px; min-height: 68px; }
+.actions.hint { place-items: center; font-size: 15px; }
+.answers { grid-template-columns: 1fr 1fr; }
+.answers button { --c: var(--accent); padding: 14px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-weight: 650; font-size: 18px; color: var(--c); background: color-mix(in srgb, var(--c) 9%, var(--surface)); border-color: color-mix(in srgb, var(--c) 40%, transparent); box-shadow: 0 1px 0 color-mix(in srgb, var(--c) 30%, transparent); }
+.answers button small { color: var(--muted); font-size: 13px; font-weight: 500; }
+.answers .unknown { --c: var(--again); }
+.answers .known { --c: var(--good); }
+.deck { perspective: 1400px; }
+.card { touch-action: pan-y; will-change: transform; }
+.card[data-lean='known'] { box-shadow: 0 0 0 3px var(--good), 0 10px 26px rgb(80 60 30 / 0.12); }
+.card[data-lean='unknown'] { box-shadow: 0 0 0 3px var(--again), 0 10px 26px rgb(80 60 30 / 0.12); }
 @media (min-width: 700px) {
   .card .face { padding: 40px 44px; }
   .back { padding: 26px 44px 32px; gap: 14px; }
-  .grades button { padding: 18px 8px; font-size: 19px; }
+  .answers button { padding: 18px 8px; font-size: 20px; }
   .actions.reveal button { padding: 22px; }
 }
 

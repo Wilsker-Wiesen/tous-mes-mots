@@ -5,7 +5,7 @@ import { frSegments, meaningLines } from '../core/display.ts';
 import { buildQueue, Session, type QueueEntry } from '../core/queue.ts';
 import { activeStates, statesToDelete } from '../core/reconcile.ts';
 import { createPlanner, formatInterval, type Planner } from '../core/scheduler.ts';
-import { newId, type CardState, type Grade, type Settings } from '../core/state.ts';
+import { newId, type CardState, type Settings } from '../core/state.ts';
 import type { CardsFile, Direction } from '../core/types.ts';
 import { openStore, type Store } from '../storage/db.ts';
 
@@ -13,12 +13,9 @@ declare const __APP_VERSION__: string;
 
 /** Schritt 2: nur Erkennen. Produktionsrichtung folgt in Schritt 3. */
 const DIRECTIONS: Direction[] = ['fr-de'];
-const GRADES: { grade: Grade; label: string }[] = [
-  { grade: 1, label: 'Nochmal' },
-  { grade: 2, label: 'Schwer' },
-  { grade: 3, label: 'Gut' },
-  { grade: 4, label: 'Leicht' },
-];
+/** Wischweg, ab dem eine Wischgeste als Antwort zählt (px). */
+const SWIPE_PX = 90;
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const root = document.getElementById('app')!;
 
@@ -90,13 +87,15 @@ async function boot(): Promise<void> {
 
 function home(app: App): void {
   const now = new Date();
-  const { entries, summary } = buildQueue({ ...app, items: app.file.items, now, directions: DIRECTIONS });
+  const queue = buildQueue({ ...app, items: app.file.items, now, directions: DIRECTIONS });
+  const { summary } = queue;
+  const available = queue.due.length + (queue.newBudget > 0 ? queue.fresh.length : 0);
 
   const newOut = h('output', {}, String(app.settings.newPerDay));
   const step = (delta: number) =>
     h('button', {
       textContent: delta > 0 ? '+' : '−',
-      ariaLabel: delta > 0 ? 'Mehr neue Karten' : 'Weniger neue Karten',
+      ariaLabel: delta > 0 ? 'Mehr unbekannte Wörter pro Tag' : 'Weniger unbekannte Wörter pro Tag',
       onclick: () => {
         app.settings = { ...app.settings, newPerDay: Math.min(200, Math.max(0, app.settings.newPerDay + delta)) };
         persist(() => app.store.setSettings(app.settings));
@@ -106,25 +105,26 @@ function home(app: App): void {
 
   const start = h('button', {
     class: 'primary',
-    textContent: entries.length > 0 ? `Abfrage starten (${entries.length})` : 'Für heute alles erledigt',
-    disabled: entries.length === 0,
-    onclick: () => quiz(app, new Session(entries, app.states, app.planner, newId())),
+    textContent: available > 0 ? 'Abfrage starten' : 'Für heute alles erledigt',
+    disabled: available === 0,
+    onclick: () => quiz(app),
   });
 
   const stat = (n: number, label: string, lead = false) =>
-    h('div', { class: `stat${lead ? ' lead' : ''}` }, h('b', {}, String(n)), h('span', { class: 'muted small' }, label));
+    h('div', { class: `stat${lead ? ' lead' : ''}` }, h('b', {}, n.toLocaleString('de-DE')), h('span', { class: 'muted small' }, label));
 
   show(
     h(
       'div',
       { class: 'home' },
+      h('div', { class: 'brand' }, tileTitle('Tous mes mots'), h('p', { class: 'muted small' }, 'Französisch → Deutsch')),
       h(
         'div',
-        { class: 'brand' },
-        tileTitle('Tous mes mots'),
-        h('p', { class: 'muted small' }, 'Französisch → Deutsch'),
+        { class: 'panel stats' },
+        stat(summary.due, 'fällig', summary.due > 0),
+        stat(summary.unsorted, 'unsortiert'),
+        stat(summary.retired, 'gewusst'),
       ),
-      h('div', { class: 'panel stats' }, stat(summary.due, 'fällig', summary.due > 0), stat(summary.newAvailable, 'neu'), stat(app.states.size, 'gelernt')),
       start,
       h(
         'div',
@@ -132,7 +132,13 @@ function home(app: App): void {
         h(
           'div',
           { class: 'setting' },
-          h('span', {}, 'Neue Karten pro Tag', h('br'), h('span', { class: 'muted small' }, `heute schon ${summary.newToday}`)),
+          h(
+            'span',
+            {},
+            'Neue Lernwörter pro Tag',
+            h('br'),
+            h('span', { class: 'muted small' }, `heute ${summary.newToday} · nur nicht gewusste zählen`),
+          ),
           h('div', { class: 'stepper' }, step(-5), newOut, step(5)),
         ),
       ),
@@ -209,31 +215,55 @@ function back(entry: QueueEntry): HTMLElement {
   );
 }
 
-function quiz(app: App, session: Session): void {
+function quiz(app: App): void {
+  const queue = buildQueue({ ...app, items: app.file.items, now: new Date(), directions: DIRECTIONS });
+  const session = new Session(queue, app.states, app.planner, app.settings.sessionSize, newId());
   let entry: QueueEntry | null = null;
   let shownAt = new Date();
   let revealedAt: Date | null = null;
+  let busy = false;
+  let cardEl: HTMLElement | null = null;
 
   const finish = () => {
     document.removeEventListener('keydown', onKey);
+    const more = buildQueue({ ...app, items: app.file.items, now: new Date(), directions: DIRECTIONS });
+    const left = more.due.length + (more.newBudget > 0 ? more.fresh.length : 0);
     show(
       h(
         'div',
         { class: 'end' },
-        h('div', { class: 'panel' }, h('b', {}, String(session.done)), h('p', { class: 'muted' }, session.done === 1 ? 'Karte bewertet' : 'Karten bewertet')),
-        h('button', { class: 'primary', textContent: 'Zur Übersicht', onclick: () => home(app) }),
+        h('div', { class: 'panel' }, h('b', {}, String(session.done)), h('p', { class: 'muted' }, session.done === 1 ? 'Karte' : 'Karten')),
+        left > 0 && h('button', { class: 'primary', textContent: 'Weiter', onclick: () => quiz(app) }),
+        h('button', { textContent: 'Zur Übersicht', onclick: () => home(app) }),
       ),
     );
   };
 
-  const rate = (grade: Grade) => {
-    if (!entry || !revealedAt) return;
-    const { state, event } = session.answer({ grade, now: new Date(), shownAt, revealedAt, appVersion: __APP_VERSION__ });
+  /** Karte kurz zur Seite gleiten lassen, dann antworten. */
+  const answer = (known: boolean) => {
+    if (!entry || !revealedAt || busy) return;
+    const { state, event } = session.answer({ known, now: new Date(), shownAt, revealedAt, appVersion: __APP_VERSION__ });
     persist(() => app.store.record(state, event));
-    next();
+    if (cardEl && !reducedMotion()) {
+      busy = true;
+      const dx = known ? 1 : -1;
+      cardEl
+        .animate([{ transform: cardEl.style.transform || 'none' }, { transform: `translateX(${dx * 120}%) rotate(${dx * 8}deg)`, opacity: 0 }], {
+          duration: 160,
+          easing: 'ease-in',
+          fill: 'forwards',
+        })
+        .finished.then(() => {
+          busy = false;
+          next();
+        });
+    } else {
+      next();
+    }
   };
 
   const undo = () => {
+    if (busy) return;
     const u = session.undo();
     if (!u) return;
     persist(() => app.store.revert(u.cardId, u.prev, { kind: 'undo', id: newId(), ts: new Date().toISOString(), targetId: u.eventId }));
@@ -243,10 +273,16 @@ function quiz(app: App, session: Session): void {
     render();
   };
 
-  const reveal = () => {
-    if (!entry || revealedAt) return;
+  /** Karte umdrehen: halbe Drehung, Rückseite einsetzen, zurückdrehen. */
+  const flip = () => {
+    if (!entry || revealedAt || busy) return;
     revealedAt = new Date();
-    render();
+    if (!cardEl || reducedMotion()) return render();
+    busy = true;
+    cardEl.animate([{ transform: 'rotateY(0)' }, { transform: 'rotateY(90deg)' }], { duration: 110, easing: 'ease-in', fill: 'forwards' }).finished.then(() => {
+      render();
+      cardEl?.animate([{ transform: 'rotateY(-90deg)' }, { transform: 'rotateY(0)' }], { duration: 130, easing: 'ease-out' }).finished.then(() => (busy = false));
+    });
   };
 
   const next = () => {
@@ -257,6 +293,37 @@ function quiz(app: App, session: Session): void {
     render();
   };
 
+  /** Wischen auf der umgedrehten Karte: rechts = gewusst, links = nicht gewusst. */
+  const swipe = (el: HTMLElement) => {
+    let x0: number | null = null;
+    let id = -1;
+    el.addEventListener('pointerdown', (ev) => {
+      if (!revealedAt || busy) return;
+      x0 = ev.clientX;
+      id = ev.pointerId;
+      el.setPointerCapture(id);
+    });
+    el.addEventListener('pointermove', (ev) => {
+      if (x0 === null || ev.pointerId !== id) return;
+      const dx = ev.clientX - x0;
+      el.style.transform = `translateX(${dx}px) rotate(${dx / 30}deg)`;
+      el.dataset.lean = dx > SWIPE_PX / 2 ? 'known' : dx < -SWIPE_PX / 2 ? 'unknown' : '';
+    });
+    const end = (ev: PointerEvent) => {
+      if (x0 === null || ev.pointerId !== id) return;
+      const dx = ev.clientX - x0;
+      x0 = null;
+      if (Math.abs(dx) >= SWIPE_PX) return answer(dx > 0);
+      el.style.transform = '';
+      el.dataset.lean = '';
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+  };
+
+  const label = (from: Date, to: Date | { from: Date; to: Date }) =>
+    to instanceof Date ? `wieder in ${formatInterval(from, to)}` : `erst in ${formatInterval(from, to.from)} – ${formatInterval(from, to.to)}`;
+
   const render = () => {
     if (!entry) return;
     const e = entry;
@@ -265,25 +332,25 @@ function quiz(app: App, session: Session): void {
       revealedAt && e.item.sicherheit === 'eigen?' && h('span', { class: 'tag warn', title: 'Bedeutung in der Liste als unsicher markiert' }, 'Bedeutung unsicher'),
     ].filter(Boolean) as HTMLElement[];
 
-    const card = h(
+    cardEl = h(
       'div',
-      { class: `card${revealedAt ? ' revealed' : ''}`, onclick: reveal },
+      { class: `card${revealedAt ? ' revealed' : ''}`, onclick: flip },
       h('div', { class: 'face' }, tags.length > 0 && h('div', { class: 'tags' }, ...tags), front(e)),
       revealedAt && back(e),
     );
+    swipe(cardEl);
 
     let actions: HTMLElement;
     if (!revealedAt) {
-      actions = h('div', { class: 'actions reveal' }, h('button', { class: 'primary', textContent: 'Aufdecken', onclick: reveal }));
+      actions = h('div', { class: 'actions hint muted' }, 'Karte antippen zum Umdrehen');
     } else {
-      const due = app.planner.preview(session.stateOf(e), new Date());
       const now = new Date();
+      const p = app.planner.preview(session.stateOf(e), now);
       actions = h(
         'div',
-        { class: 'actions grades' },
-        ...GRADES.map(({ grade, label }) =>
-          h('button', { class: `g${grade}`, onclick: () => rate(grade) }, label, h('small', {}, formatInterval(now, due[grade]))),
-        ),
+        { class: 'actions answers' },
+        h('button', { class: 'unknown', onclick: () => answer(false) }, 'Wusste ich nicht', h('small', {}, label(now, p.unknown))),
+        h('button', { class: 'known', onclick: () => answer(true) }, 'Wusste ich', h('small', {}, label(now, p.known))),
       );
     }
 
@@ -306,7 +373,7 @@ function quiz(app: App, session: Session): void {
         ),
         undoButton,
       ),
-      h('div', { class: 'deck' }, card),
+      h('div', { class: 'deck' }, cardEl),
       actions,
     );
   };
@@ -315,9 +382,11 @@ function quiz(app: App, session: Session): void {
     if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
     if (ev.key === ' ' || ev.key === 'Enter') {
       ev.preventDefault();
-      reveal();
-    } else if (/^[1-4]$/.test(ev.key)) {
-      rate(Number(ev.key) as Grade);
+      flip();
+    } else if (ev.key === 'ArrowLeft' || ev.key === '1') {
+      answer(false);
+    } else if (ev.key === 'ArrowRight' || ev.key === '2') {
+      answer(true);
     } else if (ev.key === 'z' || ev.key === 'Backspace') {
       undo();
     } else if (ev.key === 'Escape') {

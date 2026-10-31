@@ -118,6 +118,23 @@ Grundlage: `Vokabeltrainer_Briefing_fuer_Claude_Code.md` (Stand 30.10.2026, gilt
   jeder Buchstabe auf einem Plättchen mit Kante, die MOTS-Spalte violett mit weißer Schrift. Bewusst ohne
   SVG-Filter, damit `sips` die PNGs direkt erzeugen kann. Das T-Shirt-Symbol ist verworfen.
 
+## Abfrage neu: Umdrehen und zwei Antworten (31.10.2026, Jans ausdrücklicher Wunsch)
+
+*Weicht vom Briefing ab* (vier Bewertungen) und folgt dem Konzept (binär, Triage). Jans Wort geht vor.
+
+- **Karte antippen dreht sie um** (kurze 3D-Drehung, ca. 0,25 s; bei „Bewegung reduzieren“ ohne Animation).
+  Kein Aufdecken-Knopf mehr. Leertaste/Enter drehen ebenfalls.
+- **Zwei Antworten:** „Wusste ich nicht“ / „Wusste ich“; auf der umgedrehten Karte auch per Wischen
+  (links/rechts, ab 90 px), Tasten ← → oder 1 2. Unter jedem Knopf steht, wann die Karte wiederkommt.
+- **Sortierphase:** Neue Karte gewusst → Zustand `retired`, erste Stichprobe zufällig nach 90–365 Tagen;
+  bestandene Stichprobe ×2,5 (höchstens 10 Jahre), verfehlte → normale Lernkarte. Neue Karte nicht gewusst →
+  FSRS „Nochmal“, kommt nach ca. 1 Minute in derselben Sitzung wieder und dann in kurzen Abständen.
+  Bei Lernkarten: gewusst = FSRS „Gut“, nicht gewusst = „Nochmal“ (binär kostet laut Benchmark wenig). [Wahrscheinlich]
+- **Tagesbudget nur für nicht gewusste neue Wörter** (Standard 20), damit man die 4000 Wörter zügig sortieren kann,
+  ohne dass der Lernstapel explodiert. Stichproben höchstens 5 pro Tag. Sitzung 50 Karten, danach „Weiter“.
+- **Zweite Richtung** wird auch freigeschaltet, wenn die Startkarte aussortiert ist.
+- Ereignisse tragen jetzt `mode` = `triage` | `audit` | `review`, Bewertung 1 oder 3.
+
 ## Nachtrag: Rückfragen-Modus (vorgemerkt)
 
 Jan möchte den Rückfragenkatalog der Chat-Sitzung (offene Fragen zu Screenshots und Notizen, aus denen die CSV
@@ -130,7 +147,7 @@ oder Serien (Briefing: keine Gamification).
 
 | Punkt | Briefing | Konzept | Umsetzung |
 |---|---|---|---|
-| Bewertung | vier Stufen (Nochmal, Schwer, Gut, Leicht), Tasten 1–4 | binär Good/Again | vier Stufen; binäre Variante später als Einstellung prüfbar |
+| Bewertung | vier Stufen (Nochmal, Schwer, Gut, Leicht), Tasten 1–4 | binär Good/Again | **binär**, auf Jans ausdrücklichen Wunsch (31.10.2026) |
 | Zweite Karte | wird freigeschaltet, wenn die erste stabil ist (z. B. S > 7 Tage) | Geschwister nur auf Folgetag verschieben | Freischaltung nach Stabilität, zusätzlich Geschwister-Verschiebung |
 | Expressions | nur `fr-de` | zwei Karten pro Eintrag | nur `fr-de` |
 | Spiele | „keine Gamification (Punkte, Abzeichen, Serien)“ | 60-s-Sprint mit +1/−1-Wertung und Bestwerten | Spiele als Übungsbereich ohne FSRS-Effekt; Bestwert nur als nüchterne Zahl, keine Punkte, Abzeichen oder Serien. Mit Jan klären |

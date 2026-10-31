@@ -18,6 +18,8 @@ Jede Zeile erhält eine stabile ID (`sha1` aus Lemma und Richtung), damit der Le
 
 ## Schnellstart
 
+Voraussetzung: Node ≥ 22.12.
+
 ```bash
 npm install
 npm run dev           # App unter http://localhost:5173 (vorher einmal npm run import)
@@ -25,7 +27,8 @@ npm test              # Unit-Tests (CSV, IDs, Diff, Antwortvergleich)
 npm run import:check  # Diff-Protokoll gegen den letzten Import, ohne zu schreiben
 npm run import        # CSV → public/data/cards.json
 npm run import -- --csv /pfad/zur/datei.csv
-npm run build         # PWA nach dist/ (braucht Node ≥ 20)
+npm run build         # PWA nach dist/
+npm run preview       # gebaute PWA lokal ansehen
 ```
 
 Bedienung: Leertaste oder Antippen deckt auf, 1–4 bewertet (Nochmal, Schwer, Gut, Leicht), Z nimmt zurück.

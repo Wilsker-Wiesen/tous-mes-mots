@@ -54,9 +54,7 @@ Grundlage: `Vokabeltrainer_Briefing_fuer_Claude_Code.md` (Stand 30.10.2026, gilt
   Die Zerlegung an ` / ` akzeptiert auch Teilstücke („son jeu“ aus „abattre ses cartes / son jeu“); vertretbar,
   weil das Ergebnis nur ein Bewertungsvorschlag ist. [Wahrscheinlich]
 - **Eigener CSV-Leser** (40 Zeilen, getestet) statt Bibliothek: Format ist fest und einfach.
-- **Werkzeuge:** TypeScript, Vitest 3, tsx. Lokal läuft Node 18.8; Vite 8 und Vitest 5 brauchen Node ≥ 20/22,
-  `ts-fsrs` 6 gibt sogar Node ≥ 24 an (für den Browser egal, für Tests relevant). Für Schritt 2 sollte Node auf
-  22 oder 24 LTS aktualisiert werden; CI nutzt bereits Node 22. [Sicher]
+- **Werkzeuge:** TypeScript, Vitest, tsx (Versionen siehe Abschnitt Node unten).
 
 ## Schritt 2: Minimale Abfrage (30.10.2026)
 
@@ -90,10 +88,11 @@ Grundlage: `Vokabeltrainer_Briefing_fuer_Claude_Code.md` (Stand 30.10.2026, gilt
   (Einstellungen). Zustand und Ereignis werden in einer Transaktion geschrieben.
 - **Waisen beim Start:** Zustände, deren Zeile weder in `items` noch in `orphans` steht, werden gelöscht;
   Waisen bleiben gespeichert, werden aber nicht abgefragt.
-- **Node:** Vite 6, Vitest 3 und `vite-plugin-pwa` 0.21, weil diese Versionen Node 18 noch unterstützen. Der
-  Entwicklungsserver und alle Tests laufen lokal mit Node 18.8. **Der Produktions-Build (Workbox) braucht Node ≥ 20**;
-  er wird deshalb in der CI mit Node 22 geprüft. `engines` in `package.json` verlangt ≥ 20.19. Nach dem
-  Node-Update auf Vite 8 / Vitest 5 anheben. [Sicher]
+- **Node (Stand 31.10.2026):** lokal Node 26.13.0 LTS aus dem offiziellen Archiv (Prüfsumme gegen nodejs.org
+  geprüft) unter `~/.local/opt`, verlinkt nach `/usr/local/bin`. Homebrew baut für Intel-Macs keine fertigen Pakete
+  mehr und hätte Node samt LLVM und Rust aus dem Quelltext übersetzt. Projekt auf Vite 8, Vitest 5 und
+  `vite-plugin-pwa` 2 angehoben; `engines` verlangt Node ≥ 22.12, die CI nutzt Node 22. Produktions-Build läuft jetzt
+  auch lokal; Offline-Betrieb mit gestopptem Server geprüft. [Sicher]
 - **PWA:** `vite-plugin-pwa`, automatische Aktualisierung, alle Dateien inklusive `data/cards.json` im
   Offline-Cache. `base: './'`, damit dieselbe Ausgabe lokal und unter `/tous-mes-mots/` funktioniert.
   Symbol: eigenes SVG, PNGs mit `sips` erzeugt.

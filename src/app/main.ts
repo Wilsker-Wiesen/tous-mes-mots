@@ -121,8 +121,8 @@ function home(app: App): void {
       h(
         'div',
         { class: 'brand' },
-        h('img', { src: './icon.svg', alt: '' }),
-        h('div', {}, h('h1', {}, 'Tous mes mots'), h('p', { class: 'muted small' }, 'Erkennen · Französisch → Deutsch')),
+        tileTitle('Tous mes mots'),
+        h('p', { class: 'muted small' }, 'Französisch → Deutsch'),
       ),
       h('div', { class: 'panel stats' }, stat(summary.due, 'fällig', summary.due > 0), stat(summary.newAvailable, 'neu'), stat(app.states.size, 'gelernt')),
       start,
@@ -144,6 +144,18 @@ function home(app: App): void {
     ),
   );
   start.focus();
+}
+
+/** Überschrift im Stil des App-Symbols: ein Plättchen pro Buchstabe, Anfangsbuchstaben violett. */
+function tileTitle(text: string): HTMLElement {
+  const words = text.toUpperCase().split(' ');
+  return h(
+    'h1',
+    { class: 'tiles', ariaLabel: text },
+    ...words.map((w) =>
+      h('span', { class: 'word', ariaHidden: 'true' }, ...[...w].map((ch, i) => h('span', { class: i === 0 ? 'tile first' : 'tile' }, ch))),
+    ),
+  );
 }
 
 const ICONS = {

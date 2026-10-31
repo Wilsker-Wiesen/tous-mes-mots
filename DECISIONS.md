@@ -224,7 +224,8 @@ Jan entschied: Cloudflare mit Passwort (statt öffentlicher GitHub Pages ohne Wo
   durch die Passwortprüfung, auch `data/cards.json` und der Rückfragenkatalog.
 - **Passwort** als Cloudflare-Secret `APP_PASSWORD`, gesetzt von Jan selbst (`npx wrangler secret put APP_PASSWORD`);
   ohne Secret antwortet der Worker mit 503 (geschlossen statt offen). Sitzungs-Cookie = HMAC aus dem Passwort,
-  `HttpOnly; Secure; SameSite=Lax`, 400 Tage; ein neues Passwort meldet alle Geräte ab. Vergleich in konstanter
+  `HttpOnly; Secure; SameSite=Lax`, 400 Tage, gleitend: jeder Seitenaufruf und die tägliche Update-Prüfung
+  (`sw.js`) verlängern sie (Jan will sich nicht wiederholt anmelden). Ein neues Passwort meldet alle Geräte ab. Vergleich in konstanter
   Zeit, 0,8 s Verzögerung nach falschem Passwort, kein offener Redirect, `noindex`, `robots.txt` sperrt alles.
 - **Ohne Anmeldung erreichbar** nur Anmeldeseite, Manifest und Symbole (für „Zum Home-Bildschirm“).
 - **iPhone:** Die Home-Bildschirm-App hat unter iOS einen eigenen Cookie-Speicher; dort einmal anmelden. Danach

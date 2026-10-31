@@ -50,6 +50,16 @@ describe('Passwortschutz', () => {
     expect(ok.headers.get('X-Robots-Tag')).toContain('noindex');
   });
 
+  it('Seitenaufrufe und Update-Prüfung verlängern die Anmeldung, Datenabrufe nicht', async () => {
+    const token = await sessionToken('geheim-und-lang');
+    const page = await handle(get('/', { Cookie: `tmm_session=${token}`, Accept: 'text/html' }), env, noSleep);
+    expect(page.headers.get('Set-Cookie')).toMatch(/Max-Age=34560000; HttpOnly; Secure/);
+    const sw = await handle(get('/sw.js', { Cookie: `tmm_session=${token}` }), env, noSleep);
+    expect(sw.headers.get('Set-Cookie')).toMatch(/Max-Age=34560000/);
+    const data = await handle(get('/data/cards.json', { Cookie: `tmm_session=${token}` }), env, noSleep);
+    expect(data.headers.get('Set-Cookie')).toBeNull();
+  });
+
   it('gefälschtes Cookie hilft nicht', async () => {
     const fake = await sessionToken('anderes-passwort');
     expect((await handle(get('/data/cards.json', { Cookie: `tmm_session=${fake}` }), env, noSleep)).status).toBe(401);

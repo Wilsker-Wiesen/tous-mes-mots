@@ -35,6 +35,10 @@ function same(a: string, b: string): boolean {
   return diff === 0;
 }
 
+function sessionCookie(token: string): string {
+  return `${COOKIE}=${token}; Path=/; Max-Age=${COOKIE_MAX_AGE}; HttpOnly; Secure; SameSite=Lax`;
+}
+
 function cookieValue(request: Request, name: string): string | null {
   for (const part of (request.headers.get('Cookie') ?? '').split(';')) {
     const [k, ...v] = part.trim().split('=');
@@ -116,7 +120,7 @@ export async function handle(request: Request, env: Env, sleep = (ms: number) =>
           status: 303,
           headers: {
             Location: next,
-            'Set-Cookie': `${COOKIE}=${token}; Path=/; Max-Age=${COOKIE_MAX_AGE}; HttpOnly; Secure; SameSite=Lax`,
+            'Set-Cookie': sessionCookie(token),
             'Cache-Control': 'no-store',
           },
         }),
@@ -135,8 +139,15 @@ export async function handle(request: Request, env: Env, sleep = (ms: number) =>
   }
 
   const res = await env.ASSETS.fetch(request);
+  const extra: [string, string][] = [];
   // Die Wortliste nie in fremden Zwischenspeichern ablegen.
-  return withHeaders(res, url.pathname.startsWith('/data/') ? [['Cache-Control', 'private, no-cache']] : []);
+  if (url.pathname.startsWith('/data/')) extra.push(['Cache-Control', 'private, no-cache']);
+  // Gleitende Anmeldung: Seitenaufrufe und die tägliche Update-Prüfung (sw.js) verlängern sie auf volle 400 Tage.
+  // Die installierte App startet meist aus dem Cache; dann ist sw.js der einzige regelmäßige Kontakt.
+  if (!PUBLIC.has(url.pathname) && !url.pathname.startsWith('/data/')) {
+    extra.push(['Set-Cookie', sessionCookie(token)]);
+  }
+  return withHeaders(res, extra);
 }
 
 export default {

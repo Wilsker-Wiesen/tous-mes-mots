@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
-import type { CardState, LogEvent } from '../core/state.ts';
+import { DEFAULT_SETTINGS, type CardState, type LogEvent } from '../core/state.ts';
 import { openStore } from './db.ts';
 
 const state = (cardId: string, stability: number): CardState =>
@@ -30,7 +30,7 @@ describe('Store', () => {
   it('Einstellungen mit Standardwerten', async () => {
     const s = await openStore('t3');
     expect((await s.getSettings()).newPerDay).toBe(20);
-    await s.setSettings({ newPerDay: 10, sessionSize: 30, auditsPerDay: 5, desiredRetention: 0.9 });
+    await s.setSettings({ ...DEFAULT_SETTINGS, newPerDay: 10 });
     expect((await s.getSettings()).newPerDay).toBe(10);
   });
 });

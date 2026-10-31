@@ -135,6 +135,22 @@ Grundlage: `Vokabeltrainer_Briefing_fuer_Claude_Code.md` (Stand 30.10.2026, gilt
 - **Zweite Richtung** wird auch freigeschaltet, wenn die Startkarte aussortiert ist.
 - Ereignisse tragen jetzt `mode` = `triage` | `audit` | `review`, Bewertung 1 oder 3.
 
+## Schritt 3: Produktionsrichtung, Filter, Tippmodus (31.10.2026)
+
+- **Richtungswahl** auf der Startseite: FR → DE, DE → FR oder beide (gespeichert). DE → FR enthält zunächst die
+  790 Zeilen mit Richtung DE→FR (ohne Expressions); die Gegenrichtung jeder anderen Zeile kommt dazu, sobald die
+  Startkarte stabil (> 7 Tage) oder aussortiert ist. [Sicher, nachgezählt]
+- **Vorderseite DE → FR:** alle deutschen Bedeutungen untereinander, die erste groß, damit klar ist, welche Lesart
+  gemeint ist. Rückseite: französisches Lemma mit Genus und Klammerzusätzen (Genus nur hier sichtbar, Briefing 5).
+- **Filter** (einklappbar, Punkt zeigt aktive Filter): Lemmasuche in beiden Sprachen (Akzente egal, Klammer-
+  inhalte durchsuchbar, nur für die laufende Nutzung), „eigen?“ ausblenden, nur Wendungen.
+- **Tippmodus** (Schalter, nur DE → FR): Eingabefeld mit französischer Tastaturvorgabe, Autokorrektur aus;
+  Enter prüft und dreht um. Vergleich über `matchesAnswer` (Akzente, Artikel, Klammern, Platzhalter egal,
+  Synonyme einzeln). Ergebnis „passt“ / „weicht ab“ markiert nur den vorgeschlagenen Knopf; Enter übernimmt den
+  Vorschlag, die Entscheidung bleibt beim Nutzer (Briefing 4). Ereignis mit `format: 'typed'` und Eingabe.
+- Akzentfehler gelten derzeit als „passt“ (Briefing: Akzente egal). Strenger Modus mit Fehlertypen (Konzept 2.4)
+  ist vorgemerkt. [Schätzung, ob Jan das will]
+
 ## Spiele (31.10.2026)
 
 Jan wünschte einen Modus „in kurzer Zeit möglichst viele Wörter“ und einen Sudden-Death-Modus; Gestaltung
@@ -153,6 +169,13 @@ Jans ausdrücklichen Wunsch, aber ohne Abzeichen oder Serien, nur mit einem nüc
   ≥ 21 Tage) zieht dessen nächste Abfrage auf morgen vor (Konzept 5.2). Jeder Zug wird als `game`-Ereignis
   protokolliert (Wort, Optionen, Wahl, Antwortzeit).
 - **Ende:** Ergebnis, Bestwert, Liste der nicht gewussten Wörter mit Bedeutung.
+
+## Statistik und Speicherort (vorgemerkt)
+
+Jan möchte Statistik als eigenes Kapitel der App, mit Langzeitentwicklung; Vorbild chess.com (Recherche läuft,
+Ergebnis in `docs/recherche/chesscom_statistik.md`). Grundlage ist das Ereignisprotokoll in IndexedDB.
+Speicherort: Version 1 lokal plus Datei-Export (Schritt 4). Für späteres Backup/Sync steht Jans kostenloses
+Cloudflare-Workers-Konto bereit (Worker mit Durable Objects/SQLite wie in `parteigesicht/server`). [Sicher]
 
 ## Nachtrag: Rückfragen-Modus (vorgemerkt)
 

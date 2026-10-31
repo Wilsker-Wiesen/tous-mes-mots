@@ -32,6 +32,7 @@ export interface AnswerInput {
   revealedAt: Date | null;
   sessionId: string;
   appVersion: string;
+  typed?: { answer: string; match: boolean };
 }
 
 /** Was nach der jeweiligen Antwort passiert, für die Beschriftung der Knöpfe. */
@@ -117,7 +118,7 @@ export async function createPlanner(
     },
 
     answer(input) {
-      const { state, cardId, itemId, direction, known, now, shownAt, revealedAt, sessionId, appVersion } = input;
+      const { state, cardId, itemId, direction, known, now, shownAt, revealedAt, sessionId, appVersion, typed } = input;
       const mode: AnswerMode = !state ? 'triage' : state.status === 'retired' ? 'audit' : 'review';
       const base = { cardId, itemId, direction, introducedAt: state?.introducedAt ?? now.toISOString() };
       let next: CardState;
@@ -150,7 +151,8 @@ export async function createPlanner(
         cardId,
         itemId,
         direction,
-        format: 'flip',
+        format: typed ? 'typed' : 'flip',
+        ...(typed ? { typed } : {}),
         mode,
         rating: known ? GOOD : AGAIN,
         shownAt: shownAt.toISOString(),

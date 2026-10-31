@@ -2,6 +2,8 @@
 
 import './style.css';
 import { frSegments, meaningLines } from '../core/display.ts';
+import { filterItems } from '../core/filter.ts';
+import { matchesAnswer } from '../core/normalize.ts';
 import { buildRound, gameEvent, gamePool, pullForward, SPRINT_SECONDS, SUDDEN_SECONDS_PER_WORD, type GameMode, type Round } from '../core/game.ts';
 import { buildQueue, Session, type QueueEntry } from '../core/queue.ts';
 import { activeStates, statesToDelete } from '../core/reconcile.ts';
@@ -12,8 +14,18 @@ import { openStore, type Store } from '../storage/db.ts';
 
 declare const __APP_VERSION__: string;
 
-/** Schritt 2: nur Erkennen. Produktionsrichtung folgt in Schritt 3. */
-const DIRECTIONS: Direction[] = ['fr-de'];
+const DIRECTION_CHOICES: { label: string; directions: Direction[] }[] = [
+  { label: 'FR → DE', directions: ['fr-de'] },
+  { label: 'DE → FR', directions: ['de-fr'] },
+  { label: 'Beide', directions: ['fr-de', 'de-fr'] },
+];
+const DIRECTION_TEXT: Record<string, string> = {
+  'fr-de': 'Französisch → Deutsch',
+  'de-fr': 'Deutsch → Französisch',
+  'fr-de,de-fr': 'Beide Richtungen',
+};
+/** Lemmasuche gilt nur für die laufende Nutzung, wird nicht gespeichert. */
+let search = '';
 /** Wischweg, ab dem eine Wischgeste als Antwort zählt (px). */
 const SWIPE_PX = 90;
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -86,9 +98,19 @@ async function boot(): Promise<void> {
   home({ file, store, planner, settings, states: activeStates(all, file) });
 }
 
+function queueFor(app: App, now = new Date()) {
+  const items = filterItems(app.file.items, { ...app.settings, search });
+  return buildQueue({ ...app, items, now, directions: app.settings.directions });
+}
+
+function saveSettings(app: App, patch: Partial<Settings>): void {
+  app.settings = { ...app.settings, ...patch };
+  persist(() => app.store.setSettings(app.settings));
+}
+
 function home(app: App): void {
   const now = new Date();
-  const queue = buildQueue({ ...app, items: app.file.items, now, directions: DIRECTIONS });
+  const queue = queueFor(app, now);
   const { summary } = queue;
   const available = queue.due.length + (queue.newBudget > 0 ? queue.fresh.length : 0);
 
@@ -98,15 +120,14 @@ function home(app: App): void {
       textContent: delta > 0 ? '+' : '−',
       ariaLabel: delta > 0 ? 'Mehr unbekannte Wörter pro Tag' : 'Weniger unbekannte Wörter pro Tag',
       onclick: () => {
-        app.settings = { ...app.settings, newPerDay: Math.min(200, Math.max(0, app.settings.newPerDay + delta)) };
-        persist(() => app.store.setSettings(app.settings));
+        saveSettings(app, { newPerDay: Math.min(200, Math.max(0, app.settings.newPerDay + delta)) });
         home(app);
       },
     });
 
   const start = h('button', {
     class: 'primary',
-    textContent: available > 0 ? 'Abfrage starten' : 'Für heute alles erledigt',
+    textContent: available > 0 ? (search ? `Suche abfragen („${search}“)` : 'Abfrage starten') : search ? 'Keine Treffer' : 'Für heute alles erledigt',
     disabled: available === 0,
     onclick: () => quiz(app),
   });
@@ -118,7 +139,22 @@ function home(app: App): void {
     h(
       'div',
       { class: 'home' },
-      h('div', { class: 'brand' }, tileTitle('Tous mes mots'), h('p', { class: 'muted small' }, 'Französisch → Deutsch')),
+      h('div', { class: 'brand' }, tileTitle('Tous mes mots'), h('p', { class: 'muted small' }, DIRECTION_TEXT[app.settings.directions.join(',')] ?? '')),
+      h(
+        'div',
+        { class: 'segmented', role: 'group', ariaLabel: 'Richtung' },
+        ...DIRECTION_CHOICES.map((c) =>
+          h('button', {
+            textContent: c.label,
+            className: c.directions.join() === app.settings.directions.join() ? 'on' : '',
+            ariaPressed: String(c.directions.join() === app.settings.directions.join()),
+            onclick: () => {
+              saveSettings(app, { directions: c.directions });
+              home(app);
+            },
+          }),
+        ),
+      ),
       h(
         'div',
         { class: 'panel stats' },
@@ -149,6 +185,7 @@ function home(app: App): void {
           h('div', { class: 'stepper' }, step(-5), newOut, step(5)),
         ),
       ),
+      filters(app),
       h(
         'p',
         { class: 'muted small foot' },
@@ -186,22 +223,47 @@ function withContext(text: string): (Node | string)[] {
   return frSegments(text).map((s) => (s.note ? h('span', { class: 'ctx' }, s.text) : s.text));
 }
 
-function front(entry: QueueEntry): HTMLElement {
-  const hideGender = entry.direction === 'de-fr';
-  const text = entry.direction === 'fr-de' ? entry.item.fr : entry.item.de;
-  const segs = entry.direction === 'fr-de' ? frSegments(text, { hideGender }) : [{ text, note: false }];
-  return h('div', { class: 'front', lang: entry.direction === 'fr-de' ? 'fr' : 'de' }, ...segs.map((s) => (s.note ? h('span', { class: 'note' }, s.text) : s.text)));
+function toggle(label: string, hint: string, checked: boolean, onchange: (v: boolean) => void): HTMLElement {
+  const input = h('input', { type: 'checkbox', checked, ariaLabel: label, onchange: () => onchange(input.checked) });
+  return h('label', { class: 'toggle' }, h('span', {}, label, h('br'), h('span', { class: 'muted small' }, hint)), input);
 }
 
-function back(entry: QueueEntry): HTMLElement {
-  const { item } = entry;
-  const lines = meaningLines(item.de);
+/** Filter beim Start einer Sitzung (Briefing 4). */
+function filters(app: App): HTMLElement {
+  const active = app.settings.hideUncertain || app.settings.onlyExpressions || app.settings.typing || search !== '';
+  const searchInput = h('input', {
+    type: 'search',
+    value: search,
+    placeholder: 'Wort suchen (französisch oder deutsch)',
+    autocapitalize: 'off',
+    spellcheck: false,
+  });
+  searchInput.setAttribute('autocorrect', 'off');
+  searchInput.addEventListener('change', () => {
+    search = searchInput.value.trim();
+    home(app);
+  });
+  const set = (patch: Partial<Settings>) => {
+    saveSettings(app, patch);
+    home(app);
+  };
+  return h(
+    'details',
+    { class: 'panel filters', open: active },
+    h('summary', {}, 'Filter und Tippmodus', active && h('span', { class: 'dot' })),
+    searchInput,
+    toggle('Unsichere Bedeutungen ausblenden', 'Einträge mit „eigen?“', app.settings.hideUncertain, (v) => set({ hideUncertain: v })),
+    toggle('Nur Wendungen', 'Expressions, nur Französisch → Deutsch', app.settings.onlyExpressions, (v) => set({ onlyExpressions: v })),
+    toggle('Tippmodus', 'bei Deutsch → Französisch erst eintippen, dann umdrehen', app.settings.typing, (v) => set({ typing: v })),
+  );
+}
+
+/** Deutsche Bedeutungen als Liste; die erste fett. */
+function meaningList(de: string): HTMLElement[] {
+  const lines = meaningLines(de);
   const meanings = lines.filter((l) => !l.example);
   const examples = lines.filter((l) => l.example);
-  return h(
-    'div',
-    { class: 'back', lang: 'de', onclick: (ev: Event) => ev.stopPropagation() },
-    h('div', { class: 'label' }, 'Deutsch'),
+  return [
     h(
       'ul',
       { class: 'meanings' },
@@ -209,31 +271,67 @@ function back(entry: QueueEntry): HTMLElement {
         h('li', { class: i === 0 ? 'main' : '' }, l.num !== null && h('span', { class: 'num' }, String(l.num)), h('span', {}, ...withContext(l.text))),
       ),
     ),
-    examples.length > 0 &&
+    ...(examples.length > 0
+      ? [
+          h(
+            'div',
+            { class: 'examples' },
+            ...examples.map((l) => {
+              const [fr, ...de2] = l.text.split(/\s=\s/u);
+              return h('div', { class: 'example' }, h('i', { lang: 'fr' }, fr ?? ''), ' = ', ...withContext(de2.join(' = ')));
+            }),
+          ),
+        ]
+      : []),
+  ];
+}
+
+function frenchWord(fr: string, opts: { hideGender?: boolean } = {}): HTMLElement {
+  return h('div', { class: 'front', lang: 'fr' }, ...frSegments(fr, opts).map((s) => (s.note ? h('span', { class: 'note' }, s.text) : s.text)));
+}
+
+/** Vorderseite: das abgefragte Wort. Bei Deutsch → Französisch die deutschen Bedeutungen. */
+function front(entry: QueueEntry): HTMLElement {
+  if (entry.direction === 'fr-de') return frenchWord(entry.item.fr);
+  return h('div', { class: 'prompt-de', lang: 'de' }, ...meaningList(entry.item.de));
+}
+
+/** Rückseite: die Lösung, darunter Notiz. Beim Tippen zusätzlich die eigene Eingabe. */
+function back(entry: QueueEntry, typed: { answer: string; match: boolean } | null): HTMLElement {
+  const { item } = entry;
+  const deFr = entry.direction === 'de-fr';
+  return h(
+    'div',
+    { class: 'back', onclick: (ev: Event) => ev.stopPropagation() },
+    h('div', { class: 'label' }, deFr ? 'Französisch' : 'Deutsch'),
+    ...(deFr ? [frenchWord(item.fr)] : meaningList(item.de)),
+    typed &&
       h(
         'div',
-        { class: 'examples' },
-        ...examples.map((l) => {
-          const [fr, ...de] = l.text.split(/\s=\s/u);
-          return h('div', { class: 'example' }, h('i', { lang: 'fr' }, fr ?? ''), ' = ', ...withContext(de.join(' = ')));
-        }),
+        { class: `typed ${typed.match ? 'match' : 'nomatch'}` },
+        h('span', { class: 'muted small' }, 'Deine Antwort'),
+        h('span', { lang: 'fr' }, typed.answer || '—'),
+        h('span', { class: 'verdict' }, typed.match ? 'passt' : 'weicht ab'),
       ),
     item.notiz && h('details', { class: 'notiz', open: item.expression }, h('summary', {}, 'Notiz'), h('p', {}, item.notiz)),
   );
 }
 
 function quiz(app: App): void {
-  const queue = buildQueue({ ...app, items: app.file.items, now: new Date(), directions: DIRECTIONS });
+  const queue = queueFor(app);
   const session = new Session(queue, app.states, app.planner, app.settings.sessionSize, newId());
   let entry: QueueEntry | null = null;
   let shownAt = new Date();
   let revealedAt: Date | null = null;
   let busy = false;
   let cardEl: HTMLElement | null = null;
+  /** Tippmodus: Eingabe und Vergleichsergebnis der aktuellen Karte. */
+  let typed: { answer: string; match: boolean } | null = null;
+  const typing = (e: QueueEntry | null) => app.settings.typing && e?.direction === 'de-fr';
 
   const finish = () => {
     document.removeEventListener('keydown', onKey);
-    const more = buildQueue({ ...app, items: app.file.items, now: new Date(), directions: DIRECTIONS });
+    const more = queueFor(app);
     const left = more.due.length + (more.newBudget > 0 ? more.fresh.length : 0);
     show(
       h(
@@ -249,7 +347,7 @@ function quiz(app: App): void {
   /** Karte kurz zur Seite gleiten lassen, dann antworten. */
   const answer = (known: boolean) => {
     if (!entry || !revealedAt || busy) return;
-    const { state, event } = session.answer({ known, now: new Date(), shownAt, revealedAt, appVersion: __APP_VERSION__ });
+    const { state, event } = session.answer({ known, now: new Date(), shownAt, revealedAt, appVersion: __APP_VERSION__, ...(typed ? { typed } : {}) });
     persist(() => app.store.record(state, event));
     if (cardEl && !reducedMotion()) {
       busy = true;
@@ -276,6 +374,7 @@ function quiz(app: App): void {
     persist(() => app.store.revert(u.cardId, u.prev, { kind: 'undo', id: newId(), ts: new Date().toISOString(), targetId: u.eventId }));
     entry = session.current;
     revealedAt = null;
+    typed = null;
     shownAt = new Date();
     render();
   };
@@ -297,6 +396,7 @@ function quiz(app: App): void {
     if (!entry) return finish();
     shownAt = new Date();
     revealedAt = null;
+    typed = null;
     render();
   };
 
@@ -343,12 +443,34 @@ function quiz(app: App): void {
       'div',
       { class: `card${revealedAt ? ' revealed' : ''}`, onclick: flip },
       h('div', { class: 'face' }, tags.length > 0 && h('div', { class: 'tags' }, ...tags), front(e)),
-      revealedAt && back(e),
+      revealedAt && back(e, typed),
     );
     swipe(cardEl);
 
     let actions: HTMLElement;
-    if (!revealedAt) {
+    let focusTarget: HTMLElement | null = null;
+    if (!revealedAt && typing(e)) {
+      const input = h('input', {
+        type: 'text',
+        lang: 'fr',
+        placeholder: 'Auf Französisch eintippen …',
+        autocapitalize: 'off',
+        spellcheck: false,
+        enterKeyHint: 'done',
+      });
+      input.setAttribute('autocorrect', 'off');
+      input.setAttribute('autocomplete', 'off');
+      const submit = () => {
+        const value = input.value.trim();
+        typed = { answer: value, match: matchesAnswer(value, e.item.fr) };
+        flip();
+      };
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') (ev.preventDefault(), submit());
+      });
+      actions = h('form', { class: 'actions typing', onsubmit: (ev: Event) => (ev.preventDefault(), submit()) }, input, h('button', { class: 'primary', type: 'submit', textContent: 'Prüfen' }));
+      focusTarget = input;
+    } else if (!revealedAt) {
       actions = h('div', { class: 'actions hint muted' }, 'Karte antippen zum Umdrehen');
     } else {
       const now = new Date();
@@ -356,8 +478,8 @@ function quiz(app: App): void {
       actions = h(
         'div',
         { class: 'actions answers' },
-        h('button', { class: 'unknown', onclick: () => answer(false) }, 'Wusste ich nicht', h('small', {}, label(now, p.unknown))),
-        h('button', { class: 'known', onclick: () => answer(true) }, 'Wusste ich', h('small', {}, label(now, p.known))),
+        h('button', { class: `unknown${typed && !typed.match ? ' suggested' : ''}`, onclick: () => answer(false) }, 'Wusste ich nicht', h('small', {}, label(now, p.unknown))),
+        h('button', { class: `known${typed?.match ? ' suggested' : ''}`, onclick: () => answer(true) }, 'Wusste ich', h('small', {}, label(now, p.known))),
       );
     }
 
@@ -383,10 +505,21 @@ function quiz(app: App): void {
       h('div', { class: 'deck' }, cardEl),
       actions,
     );
+    focusTarget?.focus();
   };
 
   const onKey = (ev: KeyboardEvent) => {
     if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    // Im Tippfeld nur Esc abfangen; Enter erledigt das Feld selbst.
+    if (ev.target instanceof HTMLInputElement) {
+      if (ev.key === 'Escape') finish();
+      return;
+    }
+    // Nach dem Tippen übernimmt Enter den Vorschlag.
+    if (ev.key === 'Enter' && revealedAt && typed) {
+      ev.preventDefault();
+      return answer(typed.match);
+    }
     if (ev.key === ' ' || ev.key === 'Enter') {
       ev.preventDefault();
       flip();

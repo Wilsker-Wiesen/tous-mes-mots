@@ -50,7 +50,10 @@ export interface ReviewEvent {
   cardId: string;
   itemId: string;
   direction: Direction;
-  format: 'flip';
+  /** flip = umdrehen und selbst einschätzen; typed = vorher eingetippt. */
+  format: 'flip' | 'typed';
+  /** Nur bei typed: Eingabe und Vorschlag des Vergleichs. Die Entscheidung trifft der Nutzer. */
+  typed?: { answer: string; match: boolean };
   mode: AnswerMode;
   rating: Grade;
   shownAt: string;
@@ -104,9 +107,26 @@ export interface Settings {
   /** Stichproben aussortierter Wörter pro Tag. */
   auditsPerDay: number;
   desiredRetention: number;
+  /** Abgefragte Richtungen. */
+  directions: Direction[];
+  /** Deutsch → Französisch: Antwort vor dem Umdrehen eintippen. */
+  typing: boolean;
+  /** Einträge mit Sicherheit „eigen?“ ausblenden. */
+  hideUncertain: boolean;
+  /** Nur Wendungen (Expressions). */
+  onlyExpressions: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { newPerDay: 20, sessionSize: 50, auditsPerDay: 5, desiredRetention: 0.9 };
+export const DEFAULT_SETTINGS: Settings = {
+  newPerDay: 20,
+  sessionSize: 50,
+  auditsPerDay: 5,
+  desiredRetention: 0.9,
+  directions: ['fr-de'],
+  typing: false,
+  hideUncertain: false,
+  onlyExpressions: false,
+};
 
 /** Lerntag beginnt um 4 Uhr Ortszeit, damit späte Abendsitzungen zum selben Tag zählen. */
 export const DAY_ROLLOVER_HOUR = 4;

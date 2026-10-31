@@ -181,7 +181,14 @@ export class Session {
     return this.states.get(entry.cardId) ?? null;
   }
 
-  answer(args: { known: boolean; now: Date; shownAt: Date; revealedAt: Date | null; appVersion: string }): {
+  answer(args: {
+    known: boolean;
+    now: Date;
+    shownAt: Date;
+    revealedAt: Date | null;
+    appVersion: string;
+    typed?: { answer: string; match: boolean };
+  }): {
     state: CardState;
     event: ReviewEvent;
   } {

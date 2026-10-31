@@ -16,4 +16,5 @@ private/
 # Rohnotizen der Recherche (können Zitate enthalten); das Konzept selbst ist eingecheckt.
 docs/recherche/*
 !docs/recherche/Vokabeltrainer Lernmechanik Konzept.md
+!docs/recherche/chesscom_statistik.md
 quellen/

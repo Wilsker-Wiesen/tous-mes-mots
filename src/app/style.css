@@ -18,12 +18,12 @@
   --easy: #4b4fc9;
   --shadow: 0 1px 2px rgb(60 30 110 / 0.06), 0 8px 24px rgb(60 30 110 / 0.07);
   --radius: 18px;
-  --paper: #fbf7ea;
-  --paper-back: #f3ecda;
-  --paper-edge: #e2d6b9;
+  --paper: #fffefb;
+  --paper-back: #f6f4ef;
+  --paper-edge: #e6e1d6;
   --ink: #2b2238;
   --ink-muted: #7d7263;
-  --rule: rgb(120 90 180 / 0.16);
+  --rule: rgb(110 140 200 / 0.22);
   --head-rule: #9b72e0;
   --rhythm: 32px;
   --front-size: 34px;
@@ -51,9 +51,9 @@
     --good: #b794f4;
     --easy: #8f9cf5;
     --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
-    --paper: #ebe3cd;
-    --paper-back: #d9cfb6;
-    --paper-edge: #c9bc9b;
+    --paper: #f1efea;
+    --paper-back: #dcd8cf;
+    --paper-edge: #cbc5b8;
   }
 }
 /* iPad und größer */
@@ -166,10 +166,10 @@ button.icon svg { width: 20px; height: 20px; }
   position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; overflow: hidden;
   cursor: pointer; user-select: none; color: var(--ink);
   border-radius: 6px; border: 1px solid var(--paper-edge);
-  box-shadow: 0 1px 2px rgb(80 60 30 / 0.10), 0 10px 26px rgb(80 60 30 / 0.12);
+  box-shadow: 0 1px 2px rgb(60 40 90 / 0.08), 0 10px 26px rgb(60 40 90 / 0.08);
   background:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.36 0 0 0 0 0.2 0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
-    radial-gradient(ellipse at 50% 45%, transparent 55%, rgb(160 125 60 / 0.10) 100%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.36 0 0 0 0 0.2 0 0 0 0.035 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+    repeating-linear-gradient(to bottom, transparent 0 calc(var(--rhythm) - 1px), var(--rule) calc(var(--rhythm) - 1px) var(--rhythm)),
     var(--paper);
 }
 .card .face { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 28px 24px; }
@@ -186,7 +186,7 @@ button.icon svg { width: 20px; height: 20px; }
   flex: 1; display: flex; flex-direction: column; cursor: default;
   border-top: 2px solid var(--head-rule);
   padding: 0 24px 24px;
-  background: repeating-linear-gradient(to bottom, transparent 0 calc(var(--rhythm) - 1px), var(--rule) calc(var(--rhythm) - 1px) var(--rhythm));
+  background: repeating-linear-gradient(to bottom, transparent 0 calc(var(--rhythm) - 1px), var(--rule) calc(var(--rhythm) - 1px) var(--rhythm)), var(--paper);
 }
 .back .label { line-height: var(--rhythm); padding-top: 4px; height: var(--rhythm); }
 .meanings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }

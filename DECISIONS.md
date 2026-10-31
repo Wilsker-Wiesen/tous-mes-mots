@@ -106,10 +106,10 @@ Grundlage: `Vokabeltrainer_Briefing_fuer_Claude_Code.md` (Stand 30.10.2026, gilt
 - **Karte als gerahmtes Feld:** Vorderseite oben, Rückseite in abgesetztem Bereich mit Überschrift „Deutsch“.
   Hauptbedeutung fett und groß, nummerierte Bedeutungen mit Ziffernmarke, Klammerkontext klein und grau,
   Wendungen „x = y“ in eigenen Kästen, Notiz als Fußzeile.
-- **Karteikarte (Standardprogramm):** Die Abfrage sieht aus wie eine Papier-Karteikarte: cremefarbenes Papier mit
-  leichter Struktur (SVG-Rauschen als Hintergrund) und vergilbten Rändern, zwei schräg liegende Karten als Stapel
-  dahinter. Vorderseite unliniert; die Rückseite beginnt mit einer violetten Kopflinie (statt der üblichen roten)
-  und ist liniert, die Bedeutungen liegen im Zeilenraster (32 px, iPad 40 px) auf den Linien. Papier bleibt auch im
+- **Karteikarte (Standardprogramm):** Die Abfrage sieht aus wie eine klassische Karteikarte: fast weißes Papier mit
+  kaum sichtbarer Struktur, feine bläuliche Linierung auf beiden Seiten, zwei schräg liegende Karten als Stapel
+  dahinter (Jan: „nicht so pergamentig dunkel“). Die Rückseite beginnt mit einer violetten Kopflinie (statt der
+  üblichen roten), die Bedeutungen liegen im Zeilenraster (32 px, iPad 40 px) auf den Linien. Papier bleibt auch im
   Dunkelmodus hell, nur gedämpft.
 - **Kopfzeile:** Schließen-Symbol, Fortschrittsbalken mit „erledigt/offen“, Rückgängig-Symbol (auf dem iPad mit
   Beschriftung). Die Tastenlegende unter den Knöpfen ist entfallen; Tasten funktionieren weiter.

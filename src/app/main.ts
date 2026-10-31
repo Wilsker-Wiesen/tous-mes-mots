@@ -267,7 +267,7 @@ function quiz(app: App, session: Session): void {
 
     const card = h(
       'div',
-      { class: `panel card${revealedAt ? ' revealed' : ''}`, onclick: reveal },
+      { class: `card${revealedAt ? ' revealed' : ''}`, onclick: reveal },
       h('div', { class: 'face' }, tags.length > 0 && h('div', { class: 'tags' }, ...tags), front(e)),
       revealedAt && back(e),
     );
@@ -306,7 +306,7 @@ function quiz(app: App, session: Session): void {
         ),
         undoButton,
       ),
-      card,
+      h('div', { class: 'deck' }, card),
       actions,
     );
   };

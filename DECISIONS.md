@@ -135,6 +135,25 @@ Grundlage: `Vokabeltrainer_Briefing_fuer_Claude_Code.md` (Stand 30.10.2026, gilt
 - **Zweite Richtung** wird auch freigeschaltet, wenn die Startkarte aussortiert ist.
 - Ereignisse tragen jetzt `mode` = `triage` | `audit` | `review`, Bewertung 1 oder 3.
 
+## Spiele (31.10.2026)
+
+Jan wünschte einen Modus „in kurzer Zeit möglichst viele Wörter“ und einen Sudden-Death-Modus; Gestaltung
+selbst entschieden. Das Briefing schließt Gamification (Punkte, Abzeichen, Serien) aus; Spiele gibt es hier auf
+Jans ausdrücklichen Wunsch, aber ohne Abzeichen oder Serien, nur mit einem nüchternen Bestwert.
+
+- **Format Multiple Choice**, französisches Wort auf der Karteikarte, vier deutsche Antworten (erste Bedeutung).
+  Ein Tipp pro Wort ist auf iPhone und iPad am schnellsten; Tippen wäre für 60 s zu langsam. Tasten 1–4.
+- **60 Sekunden:** richtig +1, falsch −1 (Raten lohnt nicht, Konzept 5.2). **Sudden Death:** 5 s pro Wort,
+  erster Fehler oder Zeitablauf beendet das Spiel; gezählt wird die Serie.
+- **Ablenker:** gleiche grobe Wortklasse aus den CSV-Klammerzusätzen ((m), (f), adj./-e, Verb, Wendung), ähnliche
+  Länge; nie ein Wort, das eine Bedeutung mit dem Ziel teilt, keine doppelten Antworttexte. Feldnachbarn,
+  Formnachbarn und faux amis (Konzept 4.2) brauchen Metadaten, die die CSV noch nicht hat. [Schätzung]
+- **Wortauswahl:** gesehene Wörter, sobald es mindestens 30 sind; vorher alle.
+- **Kein Einfluss auf die Planung**, außer: Fehler bei einem aussortierten oder gefestigten Wort (Stabilität
+  ≥ 21 Tage) zieht dessen nächste Abfrage auf morgen vor (Konzept 5.2). Jeder Zug wird als `game`-Ereignis
+  protokolliert (Wort, Optionen, Wahl, Antwortzeit).
+- **Ende:** Ergebnis, Bestwert, Liste der nicht gewussten Wörter mit Bedeutung.
+
 ## Nachtrag: Rückfragen-Modus (vorgemerkt)
 
 Jan möchte den Rückfragenkatalog der Chat-Sitzung (offene Fragen zu Screenshots und Notizen, aus denen die CSV
@@ -150,6 +169,6 @@ oder Serien (Briefing: keine Gamification).
 | Bewertung | vier Stufen (Nochmal, Schwer, Gut, Leicht), Tasten 1–4 | binär Good/Again | **binär**, auf Jans ausdrücklichen Wunsch (31.10.2026) |
 | Zweite Karte | wird freigeschaltet, wenn die erste stabil ist (z. B. S > 7 Tage) | Geschwister nur auf Folgetag verschieben | Freischaltung nach Stabilität, zusätzlich Geschwister-Verschiebung |
 | Expressions | nur `fr-de` | zwei Karten pro Eintrag | nur `fr-de` |
-| Spiele | „keine Gamification (Punkte, Abzeichen, Serien)“ | 60-s-Sprint mit +1/−1-Wertung und Bestwerten | Spiele als Übungsbereich ohne FSRS-Effekt; Bestwert nur als nüchterne Zahl, keine Punkte, Abzeichen oder Serien. Mit Jan klären |
+| Spiele | „keine Gamification (Punkte, Abzeichen, Serien)“ | 60-s-Sprint mit +1/−1-Wertung und Bestwerten | 60 Sekunden und Sudden Death auf Jans Wunsch; ohne FSRS-Effekt, nur Bestwert, keine Abzeichen oder Serien |
 | Metadaten | sechs Spalten, CSV wird nur von der Chat-Sitzung gepflegt | 30 Spalten nach UD/Hausmann | vorerst nur vorhandene Spalten; zusätzliche Facetten (Wortart, Register …) erst, wenn die Chat-Sitzung sie in die CSV aufnimmt oder als separate Datei liefert |
 | `cards.json` | darf ins Repo | – | bleibt lokal (siehe oben, Jans Rahmen) |

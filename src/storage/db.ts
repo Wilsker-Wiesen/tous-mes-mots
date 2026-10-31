@@ -1,7 +1,7 @@
 // Lernzustand und Ereignisprotokoll in IndexedDB. Das Protokoll wird nur ergänzt, nie geändert.
 
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { CardState, LogEvent, Settings } from '../core/state.ts';
+import type { CardState, GameMode, LogEvent, Settings } from '../core/state.ts';
 import { DEFAULT_SETTINGS } from '../core/state.ts';
 
 interface TmmDB extends DBSchema {
@@ -18,8 +18,12 @@ export interface Store {
   revert(cardId: string, prev: CardState | null, event: LogEvent): Promise<void>;
   deleteStates(cardIds: string[]): Promise<void>;
   allEvents(): Promise<LogEvent[]>;
+  /** Ereignis ohne Zustandsänderung anhängen (z. B. Spielzug). */
+  log(event: LogEvent): Promise<void>;
   getSettings(): Promise<Settings>;
   setSettings(s: Settings): Promise<void>;
+  getBest(game: GameMode): Promise<number>;
+  setBest(game: GameMode, score: number): Promise<void>;
 }
 
 export async function openStore(name = 'tous-mes-mots'): Promise<Store> {
@@ -51,6 +55,18 @@ export async function openStore(name = 'tous-mes-mots'): Promise<Store> {
     },
 
     allEvents: () => db.getAllFromIndex('events', 'byTs'),
+
+    async log(event) {
+      await db.add('events', event);
+    },
+
+    async getBest(game) {
+      return ((await db.get('meta', `best:${game}`)) as number | undefined) ?? 0;
+    },
+
+    async setBest(game, score) {
+      await db.put('meta', score, `best:${game}`);
+    },
 
     async getSettings() {
       const s = (await db.get('meta', 'settings')) as Partial<Settings> | undefined;

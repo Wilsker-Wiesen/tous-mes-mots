@@ -2,6 +2,7 @@
 
 import './style.css';
 import { frSegments, meaningLines } from '../core/display.ts';
+import { buildRound, gameEvent, gamePool, pullForward, SPRINT_SECONDS, SUDDEN_SECONDS_PER_WORD, type GameMode, type Round } from '../core/game.ts';
 import { buildQueue, Session, type QueueEntry } from '../core/queue.ts';
 import { activeStates, statesToDelete } from '../core/reconcile.ts';
 import { createPlanner, formatInterval, type Planner } from '../core/scheduler.ts';
@@ -126,6 +127,12 @@ function home(app: App): void {
         stat(summary.retired, 'gewusst'),
       ),
       start,
+      h(
+        'div',
+        { class: 'games' },
+        h('button', { class: 'game-button', onclick: () => game(app, 'sprint') }, h('b', {}, '60 Sekunden'), h('span', { class: 'muted small' }, 'so viele Wörter wie möglich')),
+        h('button', { class: 'game-button', onclick: () => game(app, 'sudden') }, h('b', {}, 'Sudden Death'), h('span', { class: 'muted small' }, 'ein Fehler, und es ist vorbei')),
+      ),
       h(
         'div',
         { class: 'panel settings' },
@@ -395,6 +402,191 @@ function quiz(app: App): void {
   };
   document.addEventListener('keydown', onKey);
   next();
+}
+
+const GAMES: Record<GameMode, { title: string; rule: string }> = {
+  sprint: { title: '60 Sekunden', rule: 'So viele Wörter wie möglich. Richtig +1, falsch −1.' },
+  sudden: { title: 'Sudden Death', rule: `${SUDDEN_SECONDS_PER_WORD} Sekunden pro Wort. Der erste Fehler beendet das Spiel.` },
+};
+
+function shuffled<T>(list: T[]): T[] {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j]!, a[i]!];
+  }
+  return a;
+}
+
+/** Spiel: französisches Wort, vier deutsche Antworten, gegen die Uhr. Ändert die Lernplanung nicht. */
+function game(app: App, mode: GameMode): void {
+  const { title, rule } = GAMES[mode];
+  let best = 0;
+  const bestEl = h('p', { class: 'small muted' }, '');
+  void app.store.getBest(mode).then((b) => {
+    best = b;
+    bestEl.textContent = b > 0 ? `Bestwert: ${b}` : 'Noch kein Bestwert';
+  });
+  const intro = h('button', { class: 'primary', textContent: 'Los', onclick: () => play() });
+  const onIntroKey = (ev: KeyboardEvent) => {
+    if (ev.key === 'Enter' || ev.key === ' ') (ev.preventDefault(), play());
+    if (ev.key === 'Escape') (document.removeEventListener('keydown', onIntroKey), home(app));
+  };
+  document.addEventListener('keydown', onIntroKey);
+  show(
+    h(
+      'div',
+      { class: 'end' },
+      h('div', { class: 'panel game-intro' }, h('h2', {}, title), h('p', { class: 'muted' }, rule), bestEl),
+      intro,
+      h('button', { textContent: 'Zurück', onclick: () => (document.removeEventListener('keydown', onIntroKey), home(app)) }),
+    ),
+  );
+  intro.focus();
+
+  function play(): void {
+    document.removeEventListener('keydown', onIntroKey);
+    const sessionId = newId();
+    const distractors = app.file.items.filter((i) => i.directions.includes('fr-de'));
+    let targets = shuffled(gamePool(app.file.items, app.states));
+    let round: Round | null = null;
+    let roundStart = 0;
+    let hits = 0;
+    let misses = 0;
+    let locked = false;
+    let over = false;
+    const missed: Round['target'][] = [];
+    const t0 = performance.now();
+    const limitMs = (mode === 'sprint' ? SPRINT_SECONDS : SUDDEN_SECONDS_PER_WORD) * 1000;
+
+    const fill = h('div', { class: 'fill' });
+    const clock = h('span', {}, '');
+    const scoreEl = h('span', { class: 'score' }, '0');
+    const cardHost = h('div', { class: 'deck' });
+    const optionsHost = h('div', { class: 'options' });
+    show(
+      h(
+        'div',
+        { class: 'bar' },
+        iconButton('close', 'Spiel beenden (Esc)', () => end()),
+        h('div', { class: 'meter' }, h('div', { class: 'track' }, fill), h('div', { class: 'count' }, clock, h('span', {}, title))),
+        scoreEl,
+      ),
+      cardHost,
+      optionsHost,
+    );
+
+    const score = () => (mode === 'sprint' ? hits - misses : hits);
+
+    const tick = () => {
+      if (over) return;
+      const now = performance.now();
+      const left = mode === 'sprint' ? limitMs - (now - t0) : limitMs - (now - roundStart);
+      fill.style.width = `${Math.max(0, (100 * left) / limitMs)}%`;
+      clock.textContent = `${Math.max(0, Math.ceil(left / 1000))} s`;
+      if (left <= 0) {
+        if (mode === 'sprint') return end();
+        if (!locked) choose(null);
+      }
+      requestAnimationFrame(tick);
+    };
+
+    const nextRound = () => {
+      if (targets.length === 0) targets = shuffled(gamePool(app.file.items, app.states));
+      round = buildRound(targets.pop()!, distractors);
+      roundStart = performance.now();
+      locked = false;
+      cardHost.replaceChildren(h('div', { class: 'card game-card' }, h('div', { class: 'face' }, front({ cardId: '', item: round.target, direction: 'fr-de' }))));
+      optionsHost.replaceChildren(
+        ...round.options.map((o, i) => {
+          const b = h('button', { class: 'option', onclick: () => choose(o.item.id) }, h('span', { class: 'key' }, String(i + 1)), o.text);
+          b.dataset.item = o.item.id;
+          return b;
+        }),
+      );
+    };
+
+    const choose = (itemId: string | null) => {
+      if (!round || locked || over) return;
+      locked = true;
+      const r = round;
+      const correct = itemId === r.target.id;
+      if (correct) hits++;
+      else (misses++, missed.push(r.target));
+      scoreEl.textContent = String(score());
+      for (const b of optionsHost.querySelectorAll<HTMLButtonElement>('.option')) {
+        if (b.dataset.item === r.target.id) b.classList.add('right');
+        else if (b.dataset.item === itemId) b.classList.add('wrong');
+      }
+      const now = new Date();
+      const cid = `${r.target.id}/fr-de`;
+      const event = gameEvent({
+        ts: now.toISOString(),
+        sessionId,
+        game: mode,
+        cardId: cid,
+        itemId: r.target.id,
+        correct,
+        chosenItemId: itemId,
+        optionItemIds: r.options.map((o) => o.item.id),
+        latencyMs: Math.round(performance.now() - roundStart),
+      });
+      const pulled = correct ? null : pullForward(app.states.get(cid), now);
+      if (pulled) {
+        app.states.set(cid, pulled);
+        persist(() => app.store.record(pulled, event));
+      } else {
+        persist(() => app.store.log(event));
+      }
+      if (!correct && mode === 'sudden') return void setTimeout(end, 700);
+      setTimeout(nextRound, correct ? 140 : 650);
+    };
+
+    const end = () => {
+      if (over) return;
+      over = true;
+      document.removeEventListener('keydown', onKey);
+      const final = score();
+      const record = final > best;
+      if (record) persist(() => app.store.setBest(mode, final));
+      const again = h('button', { class: 'primary', textContent: 'Nochmal', onclick: () => game(app, mode) });
+      show(
+        h(
+          'div',
+          { class: 'end' },
+          h(
+            'div',
+            { class: 'panel' },
+            h('b', {}, String(final)),
+            h('p', { class: 'muted' }, mode === 'sprint' ? `${hits} richtig · ${misses} falsch` : `${hits} in Folge`),
+            h('p', { class: 'small' }, record ? 'Neuer Bestwert' : `Bestwert: ${best}`),
+          ),
+          missed.length > 0 &&
+            h(
+              'div',
+              { class: 'panel missed' },
+              h('div', { class: 'label' }, 'Nicht gewusst'),
+              ...missed.map((m) => h('div', { class: 'miss' }, h('span', { lang: 'fr' }, m.fr), h('span', { class: 'muted' }, meaningLines(m.de)[0]?.text ?? m.de))),
+            ),
+          again,
+          h('button', { textContent: 'Zur Übersicht', onclick: () => home(app) }),
+        ),
+      );
+      again.focus();
+    };
+
+    const onKey = (ev: KeyboardEvent) => {
+      if (/^[1-4]$/.test(ev.key)) {
+        const id = round?.options[Number(ev.key) - 1]?.item.id;
+        if (id) choose(id);
+      } else if (ev.key === 'Escape') {
+        end();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    nextRound();
+    requestAnimationFrame(tick);
+  }
 }
 
 boot().catch((err: unknown) => {

@@ -76,7 +76,25 @@ export interface UndoEvent {
   targetId: string;
 }
 
-export type LogEvent = ReviewEvent | UndoEvent;
+export type GameMode = 'sprint' | 'sudden';
+
+/** Spielzug: wird protokolliert, ändert aber keine Planung (außer dem Prüfsignal, siehe game.ts). */
+export interface GameEvent {
+  kind: 'game';
+  id: string;
+  ts: string;
+  sessionId: string;
+  game: GameMode;
+  cardId: string;
+  itemId: string;
+  correct: boolean;
+  /** null = Zeit abgelaufen. */
+  chosenItemId: string | null;
+  optionItemIds: string[];
+  latencyMs: number;
+}
+
+export type LogEvent = ReviewEvent | UndoEvent | GameEvent;
 
 export interface Settings {
   /** Höchstzahl neuer Wörter pro Tag, die man NICHT wusste (gewusste kosten nichts). */

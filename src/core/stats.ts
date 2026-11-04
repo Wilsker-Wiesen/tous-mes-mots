@@ -279,7 +279,7 @@ export const DIMENSIONS: { key: string; label: string; of: (item: Item, e: Revie
   { key: 'direction', label: 'Richtung', of: (_i, e) => (e.direction === 'fr-de' ? 'FR → DE' : 'DE → FR') },
   { key: 'class', label: 'Wortart', of: (i) => CLASS_LABEL[wordClass(i)] ?? 'Sonstiges' },
   { key: 'sicherheit', label: 'Sicherheit', of: (i) => i.sicherheit },
-  { key: 'format', label: 'Format', of: (_i, e) => (e.format === 'typed' ? 'getippt' : 'umgedreht') },
+  { key: 'format', label: 'Format', of: (_i, e) => (e.format === 'typed' ? 'getippt' : e.format === 'voice' ? 'gesprochen' : 'umgedreht') },
 ];
 
 /**

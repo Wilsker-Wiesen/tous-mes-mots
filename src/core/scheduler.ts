@@ -33,6 +33,8 @@ export interface AnswerInput {
   sessionId: string;
   appVersion: string;
   typed?: { answer: string; match: boolean };
+  /** Hörmodus: Antwort gesprochen statt getippt (typed enthält dann das Erkannte). */
+  spoken?: boolean;
 }
 
 /** Was nach der jeweiligen Antwort passiert, für die Beschriftung der Knöpfe. */
@@ -118,7 +120,7 @@ export async function createPlanner(
     },
 
     answer(input) {
-      const { state, cardId, itemId, direction, known, now, shownAt, revealedAt, sessionId, appVersion, typed } = input;
+      const { state, cardId, itemId, direction, known, now, shownAt, revealedAt, sessionId, appVersion, typed, spoken } = input;
       const mode: AnswerMode = !state ? 'triage' : state.status === 'retired' ? 'audit' : 'review';
       const base = { cardId, itemId, direction, introducedAt: state?.introducedAt ?? now.toISOString() };
       let next: CardState;
@@ -151,7 +153,7 @@ export async function createPlanner(
         cardId,
         itemId,
         direction,
-        format: typed ? 'typed' : 'flip',
+        format: spoken ? 'voice' : typed ? 'typed' : 'flip',
         ...(typed ? { typed } : {}),
         mode,
         rating: known ? GOOD : AGAIN,

@@ -50,9 +50,9 @@ export interface ReviewEvent {
   cardId: string;
   itemId: string;
   direction: Direction;
-  /** flip = umdrehen und selbst einschätzen; typed = vorher eingetippt. */
-  format: 'flip' | 'typed';
-  /** Nur bei typed: Eingabe und Vorschlag des Vergleichs. Die Entscheidung trifft der Nutzer. */
+  /** flip = umdrehen und selbst einschätzen; typed = vorher eingetippt; voice = Hörmodus, gesprochen. */
+  format: 'flip' | 'typed' | 'voice';
+  /** Bei typed und voice: Eingabe (bzw. erkannter Text) und Ergebnis des Vergleichs. */
   typed?: { answer: string; match: boolean };
   mode: AnswerMode;
   rating: Grade;

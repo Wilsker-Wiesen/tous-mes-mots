@@ -5,7 +5,7 @@ Umgangssprache, Argot, Wendungen) in beiden Richtungen abzufragen. Planung mit F
 auf dem Gerät, keine Konten, kein Server.
 
 > Stand: Oktober 2026, Version 0.1. Umgesetzt: Import, Karteikarten-Abfrage mit FSRS in beiden Richtungen,
-> Sortierphase, Tippmodus, Filter, Spiele (60 Sekunden, Sudden Death), Statistik, Sicherung und Melden.
+> Sortierphase, Tippmodus, Filter, Spiele (60 Sekunden, Sudden Death), Hörmodus, Statistik, Sicherung und Melden.
 > Dazu der Rückfragen-Modus für offene Fragen der Listenpflege.
 
 **Starten:** https://wilsker-wiesen.github.io/tous-mes-mots/ (Passwort einmal pro Gerät; auf iPhone/iPad über

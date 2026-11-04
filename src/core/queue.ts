@@ -188,6 +188,7 @@ export class Session {
     revealedAt: Date | null;
     appVersion: string;
     typed?: { answer: string; match: boolean };
+    spoken?: boolean;
   }): {
     state: CardState;
     event: ReviewEvent;

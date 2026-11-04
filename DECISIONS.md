@@ -281,6 +281,26 @@ Grundlage: `private/rueckfragen/README.md` und `katalog.json` der Chat-Sitzung (
 - Antworten liegen in IndexedDB und reisen in der Sicherung mit (`questionAnswers`; beim Einlesen gewinnt die
   jüngere Antwort je Frage).
 
+## Hörmodus (04.11.2026)
+
+Freihändig abfragen, z. B. im Auto. Ausdrücklich ohne Server und ohne KI (Stufe 1 der Abwägung vom 04.11.2026).
+
+- **Technik:** Web Speech API des Browsers. Vorlesen mit der besten Systemstimme (Premium vor Erweitert vor
+  lokal), Erkennung über die Diktierfunktion des Systems. Bildschirm bleibt per Wake Lock an; gesperrt geht nichts.
+- **Ablauf je Karte:** Frage vorlesen (FR → DE: Lemma; DE → FR: bis zu drei Bedeutungen, ohne Beispiele und
+  Klammern, Platzhalter ausgeschrieben), Ton, zuhören (8 s), vergleichen. Zweimal Stille = Lösung.
+- **Bewertung automatisch:** erkannt = gewusst, sonst „Gemeint war …“ und nicht gewusst. Weil die Erkennung
+  sich verhört, gilt danach 3,5 s lang „doch“ als gewusst. Protokoll: `format: 'voice'`, `typed` = Erkanntes.
+- **Vergleich großzügiger als im Tippmodus:** zusätzlich deutsche Artikel, „sich/se“, ausgeschriebene Platzhalter
+  und übrig gebliebene Präpositionen egal; ab vier Zeichen darf die Lösung in einem längeren Satz stehen.
+- **Befehle** nur als ganze Äußerung und erst, wenn keine Lösung passt (sonst würde „Pause“ als Antwort auf
+  *la pause* die Sitzung anhalten): weiß nicht, nochmal, doch, zurück, melden, Pause/weiter, Ende – jeweils
+  auch auf Französisch, weil die Erkennung bei DE → FR auf Französisch hört.
+- **Ohne Spracherkennung:** „Nur vorlesen“ – Frage, 4 s Pause, Lösung; keine Bewertung.
+- **Rückfragen per Sprache:** noch nicht; erst, wenn die Erkennung auf Jans iPhone im Alltag trägt.
+- Offen: ob Safari die Erkennung in der Home-Bildschirm-App zuverlässig anbietet, lässt sich nur auf dem Gerät
+  prüfen.
+
 ## Widersprüche Briefing ↔ Konzept (Briefing gilt)
 
 | Punkt | Briefing | Konzept | Umsetzung |

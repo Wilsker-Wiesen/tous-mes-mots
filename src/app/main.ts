@@ -4,6 +4,7 @@ import './style.css';
 import { h, show } from './dom.ts';
 import { dataPage, LAST_BACKUP_KEY, saveFile } from './data-view.ts';
 import { loadAppData } from './data-source.ts';
+import { listenPage } from './listen-view.ts';
 import { loadAnswers, questionsPage, type QuestionsData } from './questions-view.ts';
 import { statsPage } from './stats-view.ts';
 import { frSegments, meaningLines } from '../core/display.ts';
@@ -163,6 +164,12 @@ function home(app: App): void {
       ),
       h(
         'button',
+        { class: 'game-button stats-button listen-button', disabled: available === 0, onclick: () => openListen(app) },
+        h('b', {}, 'Hörmodus'),
+        h('span', { class: 'muted small' }, 'freihändig: vorlesen, antworten, weiter'),
+      ),
+      h(
+        'button',
         { class: 'game-button stats-button', onclick: () => openStats(app) },
         h('b', {}, 'Statistik'),
         h('span', { class: 'muted small' }, 'Verlauf, Schwächen, Rekorde'),
@@ -266,6 +273,40 @@ async function openStats(app: App): Promise<void> {
     desiredRetention: app.settings.desiredRetention,
     back: () => home(app),
     closeButton: (onclick) => iconButton('close', 'Zurück zur Übersicht', onclick),
+  });
+}
+
+function openListen(app: App): void {
+  listenPage({
+    session: () => new Session(queueFor(app), app.states, app.planner, app.settings.sessionSize, newId()),
+    preview: () => {
+      const q = queueFor(app);
+      return [...q.due, ...(q.newBudget > 0 ? q.fresh : [])].slice(0, app.settings.sessionSize);
+    },
+    record: (state, event) => persist(() => app.store.record(state, event)),
+    revert: (cardId, prev, undo) => persist(() => app.store.revert(cardId, prev, undo)),
+    report: (entry) => {
+      const { item } = entry;
+      const report: Report = {
+        id: newId(),
+        ts: new Date().toISOString(),
+        itemId: item.id,
+        fr: item.fr,
+        de: item.de,
+        richtung: item.richtung,
+        line: item.line,
+        sicherheit: item.sicherheit,
+        reason: item.sicherheit === 'eigen?' ? 'bedeutung' : 'sonstiges',
+        note: 'im Hörmodus gemeldet',
+      };
+      persist(() => app.store.addReport(report));
+      app.reported.add(item.id);
+    },
+    isReported: (entry) => app.reported.has(entry.item.id),
+    newId,
+    appVersion: __APP_VERSION__,
+    closeButton: (onclick) => iconButton('close', 'Hörmodus beenden', onclick),
+    back: () => home(app),
   });
 }
 

@@ -7,7 +7,7 @@
 
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { clipKey, collectClips, encryptPack, newAudioKey, planPacks, type AudioManifest, type AudioPack, type Clip } from '../src/core/audio.ts';
@@ -59,14 +59,19 @@ function pocketBinary(): string {
   return join(dir, found, 'pocket-tts');
 }
 
-async function waitForServer(port: number): Promise<void> {
-  // Beim ersten Start lädt der Server das Modell herunter.
-  for (let i = 0; i < 1800; i++) {
-    const ok = await fetch(`http://localhost:${port}/`).then((r) => r.ok, () => false);
-    if (ok) return;
+/** Server starten und warten, bis er antwortet. Beim ersten Start lädt er das Modell herunter. */
+async function startServer(bin: string, args: string[], port: number): Promise<ChildProcess> {
+  const log = join(resolve('private/tts'), `server-${port}.log`);
+  const server = spawn(bin, [...args, '--port', String(port)], { stdio: ['ignore', openSync(log, 'w'), openSync(log, 'a')] });
+  let exited = false;
+  server.on('exit', () => (exited = true));
+  for (let i = 0; i < 1800 && !exited; i++) {
+    const ok = await fetch(`http://localhost:${port}/health`).then((r) => r.ok, () => false);
+    if (ok) return server;
     await new Promise((r) => setTimeout(r, 1000));
   }
-  throw new Error(`Server auf Port ${port} antwortet nicht.`);
+  server.kill();
+  throw new Error(`Server auf Port ${port} ${exited ? 'ist abgestürzt' : 'antwortet nicht'}. Protokoll: ${log}`);
 }
 
 async function pocketWav(text: string, port: number, wav: string): Promise<void> {
@@ -103,17 +108,17 @@ async function generate(): Promise<void> {
   try {
     if (engine === 'pocket') {
       const bin = pocketBinary();
+      console.log('Warte auf die Modelle (beim ersten Mal werden sie heruntergeladen) …');
       for (const lang of ['fr-FR', 'de-DE'] as SpeechLang[]) {
         if (!missing.some((c) => c.lang === lang)) continue;
         const v = VOICES[lang];
         for (let i = 0; i < parallel; i++) {
           const port = v.base + i;
-          servers.push(spawn(bin, ['serve', '--language', v.language, '--default-voice', v.voice, '--port', String(port)], { stdio: 'ignore' }));
+          // Nacheinander: Gleichzeitig gestartete Server stören sich beim Laden des Modells.
+          servers.push(await startServer(bin, ['serve', '--language', v.language, '--default-voice', v.voice], port));
           workers.push({ lang, port });
         }
       }
-      console.log('Warte auf die Modelle (beim ersten Mal werden sie heruntergeladen) …');
-      await Promise.all(workers.map((w) => waitForServer(w.port)));
     } else {
       // Nur zum Testen der Abläufe: Systemstimme statt Pocket TTS.
       workers.push({ lang: 'fr-FR', port: 0 }, { lang: 'de-DE', port: 0 });

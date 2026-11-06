@@ -19,6 +19,7 @@ rmSync(out, { recursive: true, force: true });
 mkdirSync(join(out, 'bilder'), { recursive: true });
 copyFileSync(join(src, 'katalog.json'), join(out, 'katalog.json'));
 if (existsSync(join(src, 'antworten_bisher.json'))) copyFileSync(join(src, 'antworten_bisher.json'), join(out, 'antworten_bisher.json'));
+if (existsSync(join(src, 'sprechtexte.json'))) copyFileSync(join(src, 'sprechtexte.json'), join(out, 'sprechtexte.json'));
 let images = 0;
 if (existsSync(join(src, 'bilder'))) {
   for (const f of readdirSync(join(src, 'bilder'))) {

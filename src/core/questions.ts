@@ -57,6 +57,8 @@ export interface Answer {
   text: string;
   del: boolean;
   ts: number;
+  /** Per Sprache diktierter Freitext, noch nicht am Bildschirm geprüft. Kommt nicht in den Export. */
+  unterwegs?: boolean;
 }
 
 /** Fragen aller beantwortbaren Gruppen in Katalogreihenfolge; `auto` und `skipped` sind nur Information. */
@@ -85,6 +87,7 @@ export function normalizeAnswer(raw: Partial<Answer> & { id: string }): Answer {
     text: typeof raw.text === 'string' ? raw.text : '',
     del: raw.del === true,
     ts: typeof raw.ts === 'number' ? raw.ts : 0,
+    ...(raw.unterwegs ? { unterwegs: true } : {}),
   };
 }
 

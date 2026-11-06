@@ -4,6 +4,7 @@
 
 import type { Answer, Catalog } from './questions.ts';
 import type { CardsFile } from './types.ts';
+import type { SpokenScript } from './voice-questions.ts';
 
 export const VAULT_FORMAT = 'tous-mes-mots-tresor';
 export const VAULT_VERSION = 1;
@@ -17,6 +18,8 @@ export interface VaultPayload {
     antworten: Record<string, Partial<Answer> & { id: string }>;
     /** Dateiname (z. B. „r001.jpg“) → data:-URL. */
     bilder: Record<string, string>;
+    /** Sprechtexte für den Hörmodus, Schlüssel = Frage-id. */
+    sprechtexte?: Record<string, SpokenScript>;
   };
 }
 

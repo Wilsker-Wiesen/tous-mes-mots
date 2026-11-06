@@ -66,6 +66,7 @@ function readPayload(): VaultPayload {
       katalog: JSON.parse(readFileSync(join(rq, 'katalog.json'), 'utf8')),
       antworten: existsSync(join(rq, 'antworten_bisher.json')) ? JSON.parse(readFileSync(join(rq, 'antworten_bisher.json'), 'utf8')) : {},
       bilder,
+      ...(existsSync(join(rq, 'sprechtexte.json')) ? { sprechtexte: JSON.parse(readFileSync(join(rq, 'sprechtexte.json'), 'utf8')) } : {}),
     };
   }
   return payload;

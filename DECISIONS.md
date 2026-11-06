@@ -297,9 +297,32 @@ Freihändig abfragen, z. B. im Auto. Ausdrücklich ohne Server und ohne KI (Stuf
   *la pause* die Sitzung anhalten): weiß nicht, nochmal, doch, zurück, melden, Pause/weiter, Ende – jeweils
   auch auf Französisch, weil die Erkennung bei DE → FR auf Französisch hört.
 - **Ohne Spracherkennung:** „Nur vorlesen“ – Frage, 4 s Pause, Lösung; keine Bewertung.
-- **Rückfragen per Sprache:** noch nicht; erst, wenn die Erkennung auf Jans iPhone im Alltag trägt.
 - Offen: ob Safari die Erkennung in der Home-Bildschirm-App zuverlässig anbietet, lässt sich nur auf dem Gerät
   prüfen.
+
+## Rückfragen per Sprache (06.11.2026)
+
+Jan will die offenen Fragen zur Liste im Auto klären, im Dialog und mit Erklärung, warum ein Eintrag unklar war. Er
+hat beide Varianten gewählt: vorbereitete Sprechtexte und freies Gespräch mit Claude.
+
+- **Sprechtexte:** `private/rueckfragen/sprechtexte.json` (bleibt lokal, online nur im Tresor), je Frage `kurz`,
+  `warum`, `original` (Bilder in Worten), `optionen`. Geschrieben aus Katalog, Originalzeile und Bild; der Katalog
+  selbst enthält keine Begründungen. Wo die Daten den Grund nicht zeigen, sagt der Text das, statt ihn zu erfinden.
+  Französisches steht in `{…}` und wird mit der französischen Stimme gelesen. Fragen ohne Sprechtext (neuerer
+  Katalog) bekommen einen Ersatz aus den Katalogfeldern.
+- **Entscheidungen** werden lokal erkannt und funktionieren offline: Zahlen, „beide“, „streichen“, „stimmt“ usw.,
+  jeweils passend zur Gruppe und mit derselben Prüfung wie am Bildschirm. Sie zählen direkt; „zurück“ nimmt sie zurück.
+- **Diktat:** „eigene Fassung …“ (mit „französisch“ auf Französisch), wird vorgelesen und bestätigt. Weil Freitext
+  oft falsch erkannt wird, trägt die Antwort `unterwegs: true` und erscheint unter „Prüfen“. Speichern am Bildschirm
+  löscht die Markierung; sie kommt nie in den Export, der Export warnt aber vor Ungeprüftem.
+- **Stille:** zweimal keine Antwort führt zur Pause statt zur nächsten Frage (Verkehr geht vor).
+- **Claude (optional):** Was nicht als Befehl erkannt wird, geht mit eigenem API-Schlüssel an `claude-opus-5-5`,
+  direkt aus dem Browser (`@anthropic-ai/sdk`, erst beim ersten Gespräch geladen). Effort `low`, weil gesprochene
+  Kurzantworten; Fallback bei Ablehnung eingeschaltet (`fallbacks: "default"`). Übertragen werden nur die aktuelle
+  Frage, ihr Original und das Gesagte, nie Bilder oder die Wortliste. Claude schlägt per Werkzeug vor, Jan bestätigt
+  jeden Eintrag selbst; Nummern werden lokal in die wörtlichen Texte übersetzt und geprüft.
+- **Schlüssel:** gibt Jan selbst ein; liegt nur in IndexedDB (`claude:schluessel`), nicht in Sicherung oder Repo.
+  Ohne Netz oder bei Fehlern läuft die Sitzung mit den Sprechtexten weiter.
 
 ## Widersprüche Briefing ↔ Konzept (Briefing gilt)
 

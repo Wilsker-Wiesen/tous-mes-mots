@@ -103,7 +103,7 @@ const COMMANDS: Record<Command, string[]> = {
   yes: ['doch', 'gewusst', 'wusste ich', 'stimmt', 'war richtig', 'richtig', 'ja', 'oui', 'si', 'correct'],
 };
 
-function commandForm(s: string): string {
+export function commandForm(s: string): string {
   return s
     .normalize('NFD')
     .replace(/\p{M}/gu, '')

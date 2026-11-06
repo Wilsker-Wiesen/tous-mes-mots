@@ -5,6 +5,7 @@ import { h, show } from './dom.ts';
 import { dataPage, LAST_BACKUP_KEY, saveFile } from './data-view.ts';
 import { loadAppData } from './data-source.ts';
 import { listenPage } from './listen-view.ts';
+import { questionsListenPage } from './questions-listen-view.ts';
 import { loadAnswers, questionsPage, type QuestionsData } from './questions-view.ts';
 import { statsPage } from './stats-view.ts';
 import { frSegments, meaningLines } from '../core/display.ts';
@@ -164,7 +165,7 @@ function home(app: App): void {
       ),
       h(
         'button',
-        { class: 'game-button stats-button listen-button', disabled: available === 0, onclick: () => openListen(app) },
+        { class: 'game-button stats-button listen-button', disabled: available === 0 && !app.questions, onclick: () => openListen(app) },
         h('b', {}, 'Hörmodus'),
         h('span', { class: 'muted small' }, 'freihändig: vorlesen, antworten, weiter'),
       ),
@@ -307,6 +308,16 @@ function openListen(app: App): void {
     appVersion: __APP_VERSION__,
     closeButton: (onclick) => iconButton('close', 'Hörmodus beenden', onclick),
     back: () => home(app),
+    canQuiz: () => { const q = queueFor(app); return q.due.length + (q.newBudget > 0 ? q.fresh.length : 0) > 0; },
+    openQuestions: app.questions
+      ? () =>
+          questionsListenPage({
+            store: app.store,
+            data: app.questions!,
+            closeButton: (onclick) => iconButton('close', 'Hörmodus beenden', onclick),
+            back: () => void countOpenQuestions(app).then(() => openListen(app)),
+          })
+      : null,
   });
 }
 

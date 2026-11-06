@@ -20,6 +20,10 @@ export interface ListenInput {
   appVersion: string;
   closeButton: (onclick: () => void) => HTMLElement;
   back: () => void;
+  /** Gibt es gerade Vokabeln abzufragen? */
+  canQuiz: () => boolean;
+  /** Rückfragen zur Liste per Sprache, falls ein Katalog da ist. */
+  openQuestions: (() => void) | null;
 }
 
 /** So lange wird auf eine Antwort gewartet (ms). */
@@ -76,8 +80,9 @@ export function listenPage(input: ListenInput): void {
       support.speak &&
         !support.listen &&
         h('p', { class: 'warn-text' }, 'Spracherkennung gibt es in diesem Browser nicht. „Nur vorlesen“ geht trotzdem: Frage, Pause, Lösung – ohne Bewertung.'),
-      support.speak && support.listen && h('button', { class: 'primary', textContent: 'Starten', onclick: () => void start(true) }),
-      support.speak && h('button', { textContent: 'Nur vorlesen (ohne Bewertung)', onclick: () => void start(false) }),
+      support.speak && support.listen && input.canQuiz() && h('button', { class: 'primary', textContent: 'Vokabeln abfragen', onclick: () => void start(true) }),
+      support.speak && input.canQuiz() && h('button', { textContent: 'Nur vorlesen (ohne Bewertung)', onclick: () => void start(false) }),
+      support.speak && support.listen && input.openQuestions && h('button', { class: 'primary', textContent: 'Rückfragen zur Liste klären', onclick: input.openQuestions }),
       status,
       h(
         'div',

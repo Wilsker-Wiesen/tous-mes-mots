@@ -13,6 +13,7 @@ import {
   type Original,
   type Question,
 } from '../core/questions.ts';
+import type { SpokenScript } from '../core/voice-questions.ts';
 import type { Store } from '../storage/db.ts';
 import { h, show } from './dom.ts';
 
@@ -26,6 +27,8 @@ export interface QuestionsData {
   previous: Record<string, Partial<Answer> & { id: string }>;
   /** Bildadresse zu `bild` (Datei in der Entwicklung, data:-URL aus dem Tresor). */
   image: (bild: string) => string;
+  /** Sprechtexte für den Hörmodus; fehlende werden aus den Katalogfeldern gebildet. */
+  scripts: Record<string, SpokenScript>;
 }
 
 /** Katalog laden; null, wenn auf diesem Gerät keiner vorhanden ist. */
@@ -37,7 +40,10 @@ export async function loadQuestions(): Promise<QuestionsData | null> {
     const prev = await fetch(`${BASE}antworten_bisher.json`, { cache: 'no-cache' })
       .then((r) => (r.ok ? r.json() : {}))
       .catch(() => ({}));
-    return { catalog, questions: questionsFrom(catalog), previous: prev as QuestionsData['previous'], image: (bild) => BASE + bild };
+    const scripts = await fetch(`${BASE}sprechtexte.json`, { cache: 'no-cache' })
+      .then((r) => (r.ok ? r.json() : {}))
+      .catch(() => ({}));
+    return { catalog, questions: questionsFrom(catalog), previous: prev as QuestionsData['previous'], image: (bild) => BASE + bild, scripts: scripts as QuestionsData['scripts'] };
   } catch {
     return null;
   }
@@ -61,7 +67,7 @@ export interface QuestionsInput {
   saveFile: (name: string, type: string, content: string) => Promise<boolean>;
 }
 
-type View = 'open' | 'all';
+type View = 'open' | 'review' | 'all';
 
 function originalBlock(o: Original): HTMLElement {
   const hits = new Set(o.lines.map((l) => l.n));
@@ -99,13 +105,18 @@ export async function questionsPage(input: QuestionsInput): Promise<void> {
   const list = () => {
     const base = data.questions.filter((q) => !group || q.group === group);
     if (view === 'all') return base;
+    if (view === 'review') return base.filter((q) => answers.get(q.id)?.unterwegs);
     const open = base.filter((q) => !answers.has(q.id));
     return [...open.filter((q) => !skipped.has(q.id)), ...open.filter((q) => skipped.has(q.id))];
   };
 
   const persistAnswers = () => store.setMeta(ANSWERS_KEY, [...answers.values()]);
 
+  const flagged = () => [...answers.values()].filter((a) => a.unterwegs).length;
+
   const exportFile = async () => {
+    const open = flagged();
+    if (open > 0 && !confirm(`${open} unterwegs diktierte Antworten sind noch nicht geprüft. Trotzdem exportieren?`)) return;
     const json = JSON.stringify(exportAnswers(answers.values()), null, 1);
     const name = `rueckfragen_antworten_${new Date().toISOString().slice(0, 10)}.json`;
     if (await input.saveFile(name, 'application/json', json)) await store.setMeta('rueckfragen:exportiertAm', new Date().toISOString());
@@ -133,12 +144,15 @@ export async function questionsPage(input: QuestionsInput): Promise<void> {
       error = problem;
       return render();
     }
-    answers.set(q.id, { ...draft, text: draft.text.trim(), ts: Date.now() });
+    // Speichern am Bildschirm gilt als geprüft.
+    const { unterwegs: _checked, ...checked } = draft;
+    answers.set(q.id, { ...checked, text: draft.text.trim(), ts: Date.now() });
     skipped.delete(q.id);
     await persistAnswers();
     draft = null;
     error = '';
     // In „Offen“ rückt die nächste Frage automatisch auf diesen Platz.
+    if (view === 'review' && flagged() === 0) view = 'open';
     if (view === 'all') index = Math.min(index + 1, list().length - 1);
     else index = Math.min(index, Math.max(0, list().length - 1));
     render();
@@ -372,10 +386,10 @@ export async function questionsPage(input: QuestionsInput): Promise<void> {
         { class: 'q-filters' },
         h(
           'div',
-          { class: 'segmented two' },
-          ...(['open', 'all'] as View[]).map((v) =>
+          { class: `segmented ${flagged() > 0 ? 'three' : 'two'}` },
+          ...(flagged() > 0 ? (['open', 'review', 'all'] as View[]) : (['open', 'all'] as View[])).map((v) =>
             h('button', {
-              textContent: v === 'open' ? 'Offen' : 'Alle',
+              textContent: v === 'open' ? 'Offen' : v === 'review' ? `Prüfen (${flagged()})` : 'Alle',
               className: v === view ? 'on' : '',
               onclick: () => {
                 view = v;
@@ -411,7 +425,7 @@ export async function questionsPage(input: QuestionsInput): Promise<void> {
       h(
         'article',
         { class: 'panel qcard' },
-        h('div', { class: 'qhead' }, h('span', { class: 'tag' }, groups[q.group] ?? q.group), done ? h('span', { class: 'tag done' }, 'beantwortet') : null, h('span', { class: 'muted small' }, `${index + 1} / ${items.length} · ${q.id}`)),
+        h('div', { class: 'qhead' }, h('span', { class: 'tag' }, groups[q.group] ?? q.group), done ? h('span', { class: 'tag done' }, 'beantwortet') : null, a.unterwegs ? h('span', { class: 'tag warn' }, 'unterwegs diktiert, bitte prüfen') : null, h('span', { class: 'muted small' }, `${index + 1} / ${items.length} · ${q.id}`)),
         ...questionBody(q),
         q.original ? originalBlock(q.original) : null,
         q.bild ? imageBlock(data.image(q.bild)) : null,

@@ -420,3 +420,4 @@ button.icon svg { width: 20px; height: 20px; }
 .listen-button:disabled { opacity: 0.5; }
 @keyframes pulse { 50% { opacity: 0.3; transform: scale(0.8); } }
 @media (prefers-reduced-motion: reduce) { .listen-status[data-kind='listen']::before { animation: none; } }
+.listen-question { font-size: clamp(20px, 5vw, 28px); line-height: 1.3; overflow-wrap: anywhere; }

@@ -69,6 +69,7 @@ function questionsFromPayload(p: NonNullable<VaultPayload['rueckfragen']>): Ques
     questions: questionsFrom(p.katalog),
     previous: p.antworten,
     image: (bild) => p.bilder[bild.split('/').pop() ?? ''] ?? '',
+    scripts: p.sprechtexte ?? {},
   };
 }
 

@@ -1,6 +1,7 @@
 // Sprachausgabe und Spracherkennung des Browsers (Web Speech API), alles auf dem Gerät bzw. über die
 // Diktierfunktion des Systems. Kein eigener Server.
 
+import { splitSpeech } from '../core/voice-questions.ts';
 import type { SpeechLang } from '../core/voice.ts';
 
 /** Ergebnis eines Zuhörens. */
@@ -75,6 +76,14 @@ export function say(text: string, lang: SpeechLang, rate = 0.95): Promise<void> 
     current = u;
     speechSynthesis.speak(u);
   });
+}
+
+/** Sprechtext mit {französischen} Stellen; `stop` bricht zwischen den Teilen ab. */
+export async function sayMixed(text: string, stop: () => boolean = () => false): Promise<void> {
+  for (const part of splitSpeech(text)) {
+    if (stop()) return;
+    if (/\p{L}|\p{N}/u.test(part.text)) await say(part.text, part.lang);
+  }
 }
 
 export function stopSpeaking(): void {

@@ -81,7 +81,11 @@ async function pocketWav(text: string, port: number, wav: string): Promise<void>
 
 async function generate(): Promise<void> {
   const clips = readClips();
-  const missing = clips.filter((c) => !existsSync(clipFile(c))).slice(0, limit);
+  const open = clips.filter((c) => !existsSync(clipFile(c)));
+  const openChars = open.reduce((a, c) => a + c.text.length, 0);
+  // Probe: beide Sprachen, von den Vokabeln statt nur den festen Sätzen am Anfang der Liste.
+  const sample = (lang: SpeechLang) => open.filter((c) => c.lang === lang).reverse().slice(0, Math.ceil(limit / 2));
+  const missing = Number.isFinite(limit) ? [...sample('fr-FR'), ...sample('de-DE')] : open;
   console.log(`${clips.length} Aufnahmen insgesamt, ${missing.length} werden jetzt erzeugt (${missing.reduce((a, c) => a + c.text.length, 0)} Zeichen).`);
   if (missing.length === 0) return;
   mkdirSync(CLIPS, { recursive: true });
@@ -139,6 +143,10 @@ async function generate(): Promise<void> {
         }
       }),
     );
+    if (Number.isFinite(limit)) {
+      const hours = ((Date.now() - start) / 3_600_000 / chars) * (openChars - chars);
+      console.log(`Probe fertig: private/audio/clips/. Der Rest dauert in diesem Tempo etwa ${hours.toFixed(1)} Stunden.`);
+    }
   } finally {
     stop();
     rmSync(tmp, { recursive: true, force: true });
@@ -178,7 +186,8 @@ async function pack(): Promise<void> {
 
 async function main() {
   if (!args.includes('--nur-packen')) await generate();
-  await pack();
+  // Eine Probe wird nicht gepackt: Pakete bleiben unverändert, und die Stimme soll noch wechseln können.
+  if (!Number.isFinite(limit)) await pack();
 }
 
 main().catch((err: unknown) => {

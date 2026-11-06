@@ -14,7 +14,9 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "rueckfragen": "tsx scripts/rueckfragen.ts",
-    "daten": "npm run import && npm run rueckfragen && tsx scripts/vault.ts"
+    "daten": "npm run import && npm run rueckfragen && tsx scripts/vault.ts",
+    "audio": "tsx scripts/audio.ts",
+    "stimme": "sh scripts/stimme-installieren.sh"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

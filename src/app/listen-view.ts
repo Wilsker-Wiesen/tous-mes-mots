@@ -4,6 +4,7 @@
 import type { Session, QueueEntry } from '../core/queue.ts';
 import type { CardState, ReviewEvent, UndoEvent } from '../core/state.ts';
 import { parseCommand, speakFrench, speakGerman, spokenMatch, type Command, type SpeechLang } from '../core/voice.ts';
+import { audioPanel, type AudioDownload } from './audio-view.ts';
 import { h, show } from './dom.ts';
 import { beep, keepAwake, listen, say, speechSupport, stopListening, stopSpeaking, unlockAudio, type Heard } from './speech.ts';
 
@@ -20,6 +21,8 @@ export interface ListenInput {
   appVersion: string;
   closeButton: (onclick: () => void) => HTMLElement;
   back: () => void;
+  /** Sprachaufnahmen, falls veröffentlicht. */
+  audio: AudioDownload | null;
   /** Gibt es gerade Vokabeln abzufragen? */
   canQuiz: () => boolean;
   /** Rückfragen zur Liste per Sprache, falls ein Katalog da ist. */
@@ -84,6 +87,7 @@ export function listenPage(input: ListenInput): void {
       support.speak && input.canQuiz() && h('button', { textContent: 'Nur vorlesen (ohne Bewertung)', onclick: () => void start(false) }),
       support.speak && support.listen && input.openQuestions && h('button', { class: 'primary', textContent: 'Rückfragen zur Liste klären', onclick: input.openQuestions }),
       status,
+      input.audio && audioPanel(input.audio),
       h(
         'div',
         { class: 'panel commands' },

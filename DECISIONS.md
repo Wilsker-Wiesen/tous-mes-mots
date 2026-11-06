@@ -324,6 +324,24 @@ hat beide Varianten gewählt: vorbereitete Sprechtexte und freies Gespräch mit 
 - **Schlüssel:** gibt Jan selbst ein; liegt nur in IndexedDB (`claude:schluessel`), nicht in Sicherung oder Repo.
   Ohne Netz oder bei Fehlern läuft die Sitzung mit den Sprechtexten weiter.
 
+## Natürliche Stimme (06.11.2026)
+
+Jan fand die Systemstimme kaum verständlich und will alles ohne Hinsehen lernen. Keine KI-Schnittstelle und keine
+laufenden Kosten; die Apple-Stimme genügt für den Rest.
+
+- **Erzeugung lokal auf dem Mac** mit Pocket TTS von Kyutai (`npm run stimme`, `npm run audio`). Kostenlos, die
+  Wortliste verlässt den Rechner nicht. Stimmen `estelle` und `juergen`, 24-Schichten-Modelle; `--modell=normal`,
+  falls das auf dem Intel-Mac zu langsam ist. `npm run audio` lässt sich abbrechen und fortsetzen.
+- **Umfang:** alle Vokabeln (je Sprache), alle Sprechtexte, feste Sätze der App. Dynamisches wie „143 Fragen offen“
+  liest weiter die Systemstimme; sie springt auch ein, wo eine Aufnahme fehlt.
+- **Speicherung:** nicht im Tresor (zu groß für jeden Start), sondern verschlüsselte Pakete bis 20 MB in
+  `public/audio/`. Schlüssel und Inhaltsverzeichnis (enthält die Texte) stehen im Tresor. Der Paketschlüssel ist vom
+  Passwort unabhängig, ein neues Passwort erzeugt also keine neuen Pakete. Neues kommt in neue Pakete, Vorhandenes
+  bleibt unverändert, damit die Git-Historie nicht bei jeder Listenänderung um das Ganze wächst.
+- **Gerät:** einmal laden (Hörmodus → „Stimme laden“), danach in IndexedDB und offline. Pakete sind nicht im
+  Service-Worker-Cache, sonst würde jedes Update sie mitladen. Abspielen über Web Audio, weil iOS das ohne erneutes
+  Antippen zulässt.
+
 ## Widersprüche Briefing ↔ Konzept (Briefing gilt)
 
 | Punkt | Briefing | Konzept | Umsetzung |

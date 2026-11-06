@@ -2,6 +2,7 @@
 // AES-256-GCM, Schlüssel per PBKDF2-SHA-256 aus Jans Passwort. Läuft im Browser und in Node (Web Crypto).
 // Auf dem Gerät wird nur der abgeleitete Schlüssel gespeichert, nie das Passwort.
 
+import type { AudioManifest } from './audio.ts';
 import type { Answer, Catalog } from './questions.ts';
 import type { CardsFile } from './types.ts';
 import type { SpokenScript } from './voice-questions.ts';
@@ -13,6 +14,8 @@ export const PBKDF2_ITERATIONS = 600_000;
 
 export interface VaultPayload {
   cards: CardsFile;
+  /** Inhaltsverzeichnis und Schlüssel der Sprachaufnahmen (public/audio/). */
+  audio?: AudioManifest;
   rueckfragen?: {
     katalog: Catalog;
     antworten: Record<string, Partial<Answer> & { id: string }>;

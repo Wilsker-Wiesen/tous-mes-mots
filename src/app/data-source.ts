@@ -1,6 +1,7 @@
 // Woher die Wortliste kommt: online aus dem verschlüsselten Tresor (public/vault.json im Repo),
 // in der Entwicklung ohne Tresor direkt aus public/data/.
 
+import type { AudioManifest } from '../core/audio.ts';
 import { questionsFrom } from '../core/questions.ts';
 import type { CardsFile } from '../core/types.ts';
 import { decryptVault, exportKey, importKey, keyForVault, WrongPasswordError, type Vault, type VaultPayload } from '../core/vault.ts';
@@ -13,6 +14,7 @@ const KEY_META = 'vault:key';
 export interface AppData {
   file: CardsFile;
   questions: QuestionsData | null;
+  audio: AudioManifest | null;
 }
 
 function tiles(text: string): HTMLElement {
@@ -88,7 +90,7 @@ async function fromVault(vault: Vault, store: Store): Promise<AppData> {
     payload = await decryptVault(vault, key);
     await store.setMeta(KEY_META, { salt: vault.kdf.salt, key: await exportKey(key) });
   }
-  return { file: payload.cards, questions: payload.rueckfragen ? questionsFromPayload(payload.rueckfragen) : null };
+  return { file: payload.cards, questions: payload.rueckfragen ? questionsFromPayload(payload.rueckfragen) : null, audio: payload.audio ?? null };
 }
 
 /** Lädt Wortliste und Rückfragen; null, wenn es keine Daten gibt. */
@@ -98,7 +100,10 @@ export async function loadAppData(store: Store): Promise<AppData | null> {
   // Entwicklung ohne Tresor: Klartextdateien aus npm run import / npm run rueckfragen.
   const plain = await fetch('./data/cards.json', { cache: 'no-cache' }).catch(() => null);
   if (!plain?.ok) return null;
-  return { file: (await plain.json()) as CardsFile, questions: await loadQuestions() };
+  const audio = await fetch('./data/audio.json', { cache: 'no-cache' })
+    .then((r) => (r.ok ? (r.json() as Promise<AudioManifest>) : null))
+    .catch(() => null);
+  return { file: (await plain.json()) as CardsFile, questions: await loadQuestions(), audio };
 }
 
 /** Gespeicherten Schlüssel löschen (Abmelden auf diesem Gerät). */

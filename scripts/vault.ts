@@ -69,6 +69,8 @@ function readPayload(): VaultPayload {
       ...(existsSync(join(rq, 'sprechtexte.json')) ? { sprechtexte: JSON.parse(readFileSync(join(rq, 'sprechtexte.json'), 'utf8')) } : {}),
     };
   }
+  const audio = resolve('private/audio/manifest.json');
+  if (existsSync(audio)) payload.audio = JSON.parse(readFileSync(audio, 'utf8'));
   return payload;
 }
 
@@ -109,10 +111,12 @@ async function main() {
   if (newPassword) console.log('Neues Passwort: Auf jedem Gerät einmal neu anmelden.');
 
   if (!push) return;
-  execFileSync('git', ['add', OUT], { stdio: 'inherit' });
+  const packs = resolve('public/audio');
+  const paths = existsSync(packs) ? [OUT, packs] : [OUT];
+  execFileSync('git', ['add', ...paths], { stdio: 'inherit' });
   const changed = execFileSync('git', ['diff', '--cached', '--name-only']).toString().trim();
   if (!changed) return console.log('Keine Änderung zum Veröffentlichen.');
-  execFileSync('git', ['commit', '-m', `Wortliste aktualisiert (${payload.cards.items.length} Einträge)`, '--', OUT], { stdio: 'inherit' });
+  execFileSync('git', ['commit', '-m', `Wortliste aktualisiert (${payload.cards.items.length} Einträge)`, '--', ...paths], { stdio: 'inherit' });
   execFileSync('git', ['push'], { stdio: 'inherit' });
   console.log('Gepusht. GitHub veröffentlicht die App in etwa einer Minute.');
 }

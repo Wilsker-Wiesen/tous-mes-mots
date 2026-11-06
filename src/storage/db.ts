@@ -10,6 +10,8 @@ interface TmmDB extends DBSchema {
   events: { key: string; value: LogEvent; indexes: { byTs: string } };
   meta: { key: string; value: unknown };
   reports: { key: string; value: Report; indexes: { byItem: string } };
+  /** Sprachaufnahmen: Schlüssel „Sprache|Text“. */
+  audio: { key: string; value: ArrayBuffer };
 }
 
 const GAMES: GameMode[] = ['sprint', 'sudden'];
@@ -37,10 +39,12 @@ export interface Store {
   deleteReports(ids: string[]): Promise<void>;
   getMeta<T>(key: string): Promise<T | undefined>;
   setMeta(key: string, value: unknown): Promise<void>;
+  getClip(key: string): Promise<ArrayBuffer | undefined>;
+  putClips(clips: [string, ArrayBuffer][]): Promise<void>;
 }
 
 export async function openStore(name = 'tous-mes-mots'): Promise<Store> {
-  const db: IDBPDatabase<TmmDB> = await openDB<TmmDB>(name, 2, {
+  const db: IDBPDatabase<TmmDB> = await openDB<TmmDB>(name, 3, {
     upgrade(d, oldVersion) {
       if (oldVersion < 1) {
         d.createObjectStore('cards', { keyPath: 'cardId' }).createIndex('byItem', 'itemId');
@@ -50,12 +54,18 @@ export async function openStore(name = 'tous-mes-mots'): Promise<Store> {
       if (oldVersion < 2) {
         d.createObjectStore('reports', { keyPath: 'id' }).createIndex('byItem', 'itemId');
       }
+      if (oldVersion < 3) d.createObjectStore('audio');
     },
   });
 
   const getBest = async (game: GameMode) => ((await db.get('meta', `best:${game}`)) as number | undefined) ?? 0;
 
   return {
+    getClip: (key) => db.get('audio', key),
+    async putClips(clips) {
+      const tx = db.transaction('audio', 'readwrite');
+      await Promise.all([...clips.map(([key, data]) => tx.store.put(data, key)), tx.done]);
+    },
     allStates: () => db.getAll('cards'),
 
     async record(state, event) {

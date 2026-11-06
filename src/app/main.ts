@@ -5,6 +5,8 @@ import { h, show } from './dom.ts';
 import { dataPage, LAST_BACKUP_KEY, saveFile } from './data-view.ts';
 import { loadAppData } from './data-source.ts';
 import { listenPage } from './listen-view.ts';
+import { setClipSource } from './speech.ts';
+import type { AudioManifest } from '../core/audio.ts';
 import { questionsListenPage } from './questions-listen-view.ts';
 import { loadAnswers, questionsPage, type QuestionsData } from './questions-view.ts';
 import { statsPage } from './stats-view.ts';
@@ -50,6 +52,7 @@ interface App {
   /** Rückfragenkatalog, falls auf diesem Gerät vorhanden. */
   questions: QuestionsData | null;
   openQuestions: number;
+  audio: AudioManifest | null;
 }
 
 /** Schreibvorgänge nacheinander ausführen, ohne die Oberfläche warten zu lassen. */
@@ -80,14 +83,15 @@ async function boot(): Promise<void> {
     );
     return;
   }
-  const { file, questions } = data;
+  const { file, questions, audio } = data;
   const all = await store.allStates();
   const stale = statesToDelete(all, file);
   if (stale.length > 0) await store.deleteStates(stale);
   const settings = await store.getSettings();
   const planner = await createPlanner(settings);
   const [reports, lastBackup] = await Promise.all([store.allReports(), store.getMeta<string>(LAST_BACKUP_KEY)]);
-  const app: App = { file, store, planner, settings, states: activeStates(all, file), reported: new Set(reports.map((r) => r.itemId)), lastBackup, questions, openQuestions: 0 };
+  const app: App = { file, store, planner, settings, states: activeStates(all, file), reported: new Set(reports.map((r) => r.itemId)), lastBackup, questions, openQuestions: 0, audio };
+  setClipSource(audio ? (key) => store.getClip(key) : null);
   await countOpenQuestions(app);
   home(app);
 }
@@ -308,6 +312,7 @@ function openListen(app: App): void {
     appVersion: __APP_VERSION__,
     closeButton: (onclick) => iconButton('close', 'Hörmodus beenden', onclick),
     back: () => home(app),
+    audio: app.audio && { manifest: app.audio, store: app.store },
     canQuiz: () => { const q = queueFor(app); return q.due.length + (q.newBudget > 0 ? q.fresh.length : 0) > 0; },
     openQuestions: app.questions
       ? () =>

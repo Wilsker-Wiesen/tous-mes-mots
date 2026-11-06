@@ -226,7 +226,11 @@ async function run(input: QuestionsListenInput, answers: Map<string, Answer>, in
     let silences = 0;
 
     const readOptions = async () => {
-      for (const [i, option] of script.optionen.entries()) await speak(`${i + 1}. ${option}`);
+      // Nummer und Text getrennt, damit beide als Aufnahme vorliegen können.
+      for (const [i, option] of script.optionen.entries()) {
+        await speak(`${i + 1}.`);
+        await speak(option);
+      }
       if (q.group === 'singles' && (q.cur ?? []).length > 0) await speak(`Vorschlag: ${(q.cur ?? []).map((n) => n + 1).join(' und ')}.`);
       if (q.group === 'g1') await speak('Welche Nummer soll raus? Oder alle behalten.');
     };

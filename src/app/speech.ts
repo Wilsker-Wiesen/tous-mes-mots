@@ -1,6 +1,7 @@
 // Sprachausgabe und Spracherkennung des Browsers (Web Speech API), alles auf dem Gerät bzw. über die
 // Diktierfunktion des Systems. Kein eigener Server.
 
+import { clipKey, isSpeakable } from '../core/audio.ts';
 import { splitSpeech } from '../core/voice-questions.ts';
 import type { SpeechLang } from '../core/voice.ts';
 
@@ -60,9 +61,47 @@ export function bestVoice(lang: SpeechLang): SpeechSynthesisVoice | null {
 /** Hält die laufende Äußerung fest; Safari bricht sonst gelegentlich ab, wenn sie eingesammelt wird. */
 let current: SpeechSynthesisUtterance | null = null;
 
-/** Vorlesen; endet, wenn fertig gesprochen oder abgebrochen. */
-export function say(text: string, lang: SpeechLang, rate = 0.95): Promise<void> {
-  if (!text) return Promise.resolve();
+/** Vorab erzeugte Aufnahme zu einem Text, falls auf diesem Gerät geladen. */
+let clipSource: ((key: string) => Promise<ArrayBuffer | undefined>) | null = null;
+let playing: AudioBufferSourceNode | null = null;
+/** Steigt bei jedem Abbruch, damit eine noch ladende Aufnahme nicht mehr startet. */
+let playToken = 0;
+
+export function setClipSource(source: typeof clipSource): void {
+  clipSource = source;
+}
+
+/** Aufnahme abspielen; false, wenn es keine gibt oder sie nicht abspielbar ist. */
+async function playClip(text: string, lang: SpeechLang): Promise<boolean> {
+  if (!clipSource || !audio) return false;
+  const token = playToken;
+  const data = await clipSource(clipKey(lang, text));
+  if (!data) return false;
+  try {
+    const buffer = await audio.decodeAudioData(data.slice(0));
+    if (token !== playToken) return true;
+    // iOS unterbricht den Tonkanal, wenn die Spracherkennung das Mikrofon belegt.
+    await audio.resume();
+    const node = audio.createBufferSource();
+    node.buffer = buffer;
+    node.connect(audio.destination);
+    await new Promise<void>((done) => {
+      node.onended = () => done();
+      playing = node;
+      node.start();
+    });
+    if (playing === node) playing = null;
+    return true;
+  } catch (err) {
+    console.error(err);
+    return false;
+  }
+}
+
+/** Vorlesen; endet, wenn fertig gesprochen oder abgebrochen. Mit Aufnahme, sonst mit der Systemstimme. */
+export async function say(text: string, lang: SpeechLang, rate = 0.95): Promise<void> {
+  if (!text) return;
+  if (await playClip(text, lang)) return;
   return new Promise((done) => {
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang;
@@ -82,11 +121,13 @@ export function say(text: string, lang: SpeechLang, rate = 0.95): Promise<void> 
 export async function sayMixed(text: string, stop: () => boolean = () => false): Promise<void> {
   for (const part of splitSpeech(text)) {
     if (stop()) return;
-    if (/\p{L}|\p{N}/u.test(part.text)) await say(part.text, part.lang);
+    if (isSpeakable(part.text)) await say(part.text, part.lang);
   }
 }
 
 export function stopSpeaking(): void {
+  playToken++;
+  playing?.stop();
   speechSynthesis.cancel();
 }
 

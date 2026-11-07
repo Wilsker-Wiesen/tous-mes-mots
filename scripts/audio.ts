@@ -28,7 +28,7 @@ const MANIFEST = join(ROOT, 'manifest.json');
 const PACK_BYTES = 20 * 1024 * 1024;
 
 const VOICES: Record<SpeechLang, { language: string; voice: string; base: number }> = {
-  'fr-FR': { language: model === '24l' ? 'french_24l' : 'french', voice: 'estelle', base: 8100 },
+  'fr-FR': { language: model === '24l' ? 'french_24l' : 'french', voice: 'fantine', base: 8100 },
   'de-DE': { language: model === '24l' ? 'german_24l' : 'german', voice: 'juergen', base: 8200 },
 };
 

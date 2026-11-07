@@ -330,7 +330,7 @@ Jan fand die Systemstimme kaum verständlich und will alles ohne Hinsehen lernen
 laufenden Kosten; die Apple-Stimme genügt für den Rest.
 
 - **Erzeugung lokal auf dem Mac** mit Pocket TTS von Kyutai (`npm run stimme`, `npm run audio`). Kostenlos, die
-  Wortliste verlässt den Rechner nicht. Stimmen `estelle` und `juergen`, 24-Schichten-Modelle; `--modell=normal`,
+  Wortliste verlässt den Rechner nicht. Stimmen `fantine` (Jan fand `estelle` genuschelt; Vergleich von vier Stimmen) und `juergen`, 24-Schichten-Modelle; `--modell=normal`,
   falls das auf dem Intel-Mac zu langsam ist. `npm run audio` lässt sich abbrechen und fortsetzen.
 - **Umfang:** alle Vokabeln (je Sprache), alle Sprechtexte, feste Sätze der App. Dynamisches wie „143 Fragen offen“
   liest weiter die Systemstimme; sie springt auch ein, wo eine Aufnahme fehlt.

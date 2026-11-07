@@ -324,6 +324,11 @@ async function run(input: QuestionsListenInput, answers: Map<string, Answer>, in
         await intro();
         continue;
       }
+      if (heard.kind === 'interrupted') {
+        // Navigation o. ä. hat dazwischengesprochen: Auswahl noch einmal, ohne als Stille zu zählen.
+        await readOptions();
+        continue;
+      }
       if (heard.kind === 'error') return { error: heard.error === 'not-allowed' || heard.error === 'service-not-allowed' ? 'Kein Zugriff auf Mikrofon oder Spracherkennung.' : `Spracherkennung: ${heard.error}` };
       if (heard.kind === 'silence') {
         // Nicht weiterblättern, während er sich auf den Verkehr konzentriert.

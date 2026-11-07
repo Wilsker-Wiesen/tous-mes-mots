@@ -207,6 +207,8 @@ async function run(input: ListenInput): Promise<void> {
         status('Ich höre zu', 'listen');
         heard = await listen(t.answerLang, ANSWER_MS);
       }
+      // Navigation o. ä. hat dazwischengesprochen: Frage noch einmal, ohne zu werten.
+      if (heard.kind === 'interrupted' && !pressed) continue;
       const cmd =
         take() ??
         (heard.kind === 'speech' ? ((match = spokenMatch(heard.alts, t.answerField, t.answerLang)) ? null : parseCommand(heard.alts, ['dontknow', 'repeat', 'undo', 'pause', 'end', 'report'])) : null);

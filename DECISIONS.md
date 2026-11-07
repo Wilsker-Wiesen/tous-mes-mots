@@ -342,6 +342,19 @@ laufenden Kosten; die Apple-Stimme genügt für den Rest.
   Service-Worker-Cache, sonst würde jedes Update sie mitladen. Abspielen über Web Audio, weil iOS das ohne erneutes
   Antippen zulässt.
 
+## Unterbrechung durch andere Apps (08.11.2026)
+
+Jan fährt mit Navigation. Sagt Maps etwas an, nimmt iOS der App den Ton.
+
+- **Erkennung** in `speech.ts`: AudioContext geht auf „interrupted“ (nur Safari), Systemstimme meldet
+  „interrupted“/„audio-busy“, Erkennung „audio-capture“. Eigene Abbrüche (Knöpfe) zählen nicht.
+- **Vorlesen:** Der unterbrochene Text wird wiederholt, sobald der Ton wieder frei ist (höchstens zwei Minuten
+  warten, höchstens drei Versuche). Gilt überall, auch im reinen Vorlesen und bei Rückfragen.
+- **Zuhören:** Was während der Unterbrechung gehört wurde, wird verworfen (es kann die Navigationsstimme sein). Vokabel:
+  Frage noch einmal, keine Wertung, keine Stille gezählt. Rückfrage: Auswahl noch einmal.
+- Nur mit nachgebauten Browser-Schnittstellen getestet; ob iOS die Signale so liefert, zeigt erst die Fahrt.
+  Duckt iOS die App nur (leiser statt unterbrochen), gibt es kein Signal und nichts wird wiederholt.
+
 ## Widersprüche Briefing ↔ Konzept (Briefing gilt)
 
 | Punkt | Briefing | Konzept | Umsetzung |

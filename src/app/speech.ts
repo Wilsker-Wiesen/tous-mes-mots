@@ -5,8 +5,8 @@ import { clipKey, isSpeakable } from '../core/audio.ts';
 import { splitSpeech } from '../core/voice-questions.ts';
 import type { SpeechLang } from '../core/voice.ts';
 
-/** Ergebnis eines Zuhörens. */
-export type Heard = { kind: 'speech'; alts: string[] } | { kind: 'silence' } | { kind: 'error'; error: string };
+/** Ergebnis eines Zuhörens; `interrupted`: eine andere App (Navigation, Anruf) hatte den Ton, Gesagtes zählt nicht. */
+export type Heard = { kind: 'speech'; alts: string[] } | { kind: 'silence' } | { kind: 'interrupted' } | { kind: 'error'; error: string };
 
 // Die Erkennung heißt in Safari noch webkitSpeechRecognition; eigene Mindesttypen, weil lib.dom sie nicht überall kennt.
 interface RecognitionResultList {
@@ -71,6 +71,32 @@ export function setClipSource(source: typeof clipSource): void {
   clipSource = source;
 }
 
+// --- Unterbrechungen durch andere Apps ---
+// iOS nimmt einer Web-App den Ton, wenn etwa die Navigation ansagt: Der AudioContext geht auf „interrupted“, die
+// Systemstimme meldet „interrupted“, die Erkennung „audio-capture“. Eigene Abbrüche (Knöpfe) zählen nicht.
+
+let interruptions = 0;
+/** Beendet die laufende Aufnahme, damit `say` nicht auf einen angehaltenen Ton wartet. */
+let endPlaying: (() => void) | null = null;
+
+function noteInterruption(): void {
+  interruptions++;
+  endPlaying?.();
+}
+
+const sleep = (ms: number) => new Promise<void>((done) => setTimeout(done, ms));
+
+/** Warten, bis der Ton wieder frei ist (höchstens zwei Minuten), dann kurz Luft lassen. */
+async function audioFree(): Promise<void> {
+  const until = Date.now() + 120_000;
+  while (audio && audio.state !== 'running' && Date.now() < until) {
+    // resume() kann während der Unterbrechung hängen.
+    await Promise.race([audio.resume().catch(() => {}), sleep(1000)]);
+    if ((audio.state as string) !== 'running') await sleep(1000);
+  }
+  await sleep(1500);
+}
+
 /** Aufnahme abspielen; false, wenn es keine gibt oder sie nicht abspielbar ist. */
 async function playClip(text: string, lang: SpeechLang): Promise<boolean> {
   if (!clipSource || !audio) return false;
@@ -87,9 +113,19 @@ async function playClip(text: string, lang: SpeechLang): Promise<boolean> {
     node.connect(audio.destination);
     await new Promise<void>((done) => {
       node.onended = () => done();
+      endPlaying = () => {
+        node.onended = null;
+        try {
+          node.stop();
+        } catch {
+          // schon beendet
+        }
+        done();
+      };
       playing = node;
       node.start();
     });
+    endPlaying = null;
     if (playing === node) playing = null;
     return true;
   } catch (err) {
@@ -98,17 +134,37 @@ async function playClip(text: string, lang: SpeechLang): Promise<boolean> {
   }
 }
 
-/** Vorlesen; endet, wenn fertig gesprochen oder abgebrochen. Mit Aufnahme, sonst mit der Systemstimme. */
+/**
+ * Vorlesen; endet, wenn fertig gesprochen oder abgebrochen. Mit Aufnahme, sonst mit der Systemstimme.
+ * Unterbricht eine andere App, wird der Text danach noch einmal gesprochen.
+ */
 export async function say(text: string, lang: SpeechLang, rate = 0.95): Promise<void> {
   if (!text) return;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const token = playToken;
+    const mark = interruptions;
+    await sayOnce(text, lang, rate);
+    if (token !== playToken || interruptions === mark) return;
+    await audioFree();
+    if (token !== playToken) return;
+  }
+}
+
+async function sayOnce(text: string, lang: SpeechLang, rate: number): Promise<void> {
   if (await playClip(text, lang)) return;
+  const token = playToken;
   return new Promise((done) => {
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang;
     u.rate = rate;
     const v = bestVoice(lang);
     if (v) u.voice = v;
-    u.onend = u.onerror = () => {
+    u.onend = () => {
+      if (current === u) current = null;
+      done();
+    };
+    u.onerror = (ev) => {
+      if ((ev.error === 'interrupted' || ev.error === 'audio-busy') && token === playToken) noteInterruption();
       if (current === u) current = null;
       done();
     };
@@ -144,6 +200,7 @@ export function listen(lang: SpeechLang, ms: number): Promise<Heard> {
     r.interimResults = false;
     r.maxAlternatives = 3;
     let result: Heard = { kind: 'silence' };
+    const mark = interruptions;
     r.onresult = (ev) => {
       const alts: string[] = [];
       for (let i = 0; i < ev.results.length; i++) {
@@ -153,13 +210,15 @@ export function listen(lang: SpeechLang, ms: number): Promise<Heard> {
       if (alts.some((a) => a)) result = { kind: 'speech', alts: alts.filter((a) => a) };
     };
     r.onerror = (ev) => {
-      if (ev.error !== 'no-speech' && ev.error !== 'aborted') result = { kind: 'error', error: ev.error };
+      if (ev.error === 'audio-capture') noteInterruption();
+      else if (ev.error !== 'no-speech' && ev.error !== 'aborted') result = { kind: 'error', error: ev.error };
     };
     const timer = setTimeout(() => r.abort(), ms);
     r.onend = () => {
       clearTimeout(timer);
       if (activeRecognition === r) activeRecognition = null;
-      done(result);
+      if (interruptions === mark) done(result);
+      else void audioFree().then(() => done({ kind: 'interrupted' }));
     };
     activeRecognition = r;
     try {
@@ -199,7 +258,14 @@ export function beep(kind: 'listen' | 'low' = 'listen'): Promise<void> {
 export async function unlockAudio(withMic: boolean): Promise<string | null> {
   speechSynthesis.speak(new SpeechSynthesisUtterance(' '));
   try {
-    audio ??= new AudioContext();
+    if (!audio) {
+      const ctx = new AudioContext();
+      // „interrupted“ gibt es nur in Safari, deshalb als Zeichenkette verglichen.
+      ctx.addEventListener('statechange', () => {
+        if ((ctx.state as string) === 'interrupted') noteInterruption();
+      });
+      audio = ctx;
+    }
     await audio.resume();
   } catch {
     audio = null;
